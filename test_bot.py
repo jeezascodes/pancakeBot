@@ -59,6 +59,7 @@ if BET_TYPE == 'bear':
     transaction = contractPancake.functions.betBear(bet).buildTransaction({
         'gas': 150,
         # 'gasPrice': web3.toWei('1', 'gwei'),
+        'chainId': 56,
         'from': juan,
         'nonce': nonce
     }) 
@@ -74,6 +75,7 @@ elif BET_TYPE == "bull":
     transaction = contractPancake.functions.betBull(bet).buildTransaction({
         'gas': 150,
         # 'gasPrice': web3.toWei('1', 'gwei'),
+        'chainId': 56,
         'from': juan,
         'nonce': nonce
     }) 
