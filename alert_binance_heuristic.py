@@ -21,7 +21,7 @@ parser.add_option("--time_window",
 parser.add_option("--round_duration",
                   dest="round_duration",
                   type="int",
-                  default=308,
+                  default=300,
                   help="estimated seconds for a round to close since its lock time")
 parser.add_option("--difference_percentage",
                   dest="difference_percentage",
@@ -85,7 +85,7 @@ while True:
       time.sleep(seconds_left if seconds_left >= 0 else 1)
       continue
     else:
-      print("Detectamos el bloque {} justo a tiempo, procederemos a revisarlo",format(live_round['id']))
+      print("Detectamos el bloque {} justo a tiempo, procederemos a revisarlo".format(live_round['id']))
   
 
   chainlink_price = utils.get_chainlink_last_round_price()
