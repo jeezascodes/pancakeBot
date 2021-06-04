@@ -45,7 +45,7 @@ query getMarketData {{
 """
 
 # Duermo un minuto
-result = run_query(graph_query.format(200, 0))
+result = run_query(graph_query.format(300, 0))
 resutls_list = result['data']['rounds']
 clean_list = list(filter(lambda x: x['closePrice'] != None, resutls_list))
 clean_amounts = list(
@@ -81,3 +81,4 @@ def get_accuracy():
 
 
 print(get_accuracy())
+print(len(filtered_list))
