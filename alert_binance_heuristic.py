@@ -107,7 +107,9 @@ while True:
 
         if current_price_difference >= PRICE_MINIMUM_DIFFERENCE:
           position = 'Bull' if binance_price > chainlink_price['price'] else 'Bear'
-          title = "Apostar a \033[92m{}\033[0m - Cierre de bloque en {}".format(position,should_close_at-now)
+          color = "\033[92m" if position == 'Bull' else "\033[31m" 
+
+          title = "Apostar a {}{}\033[0m - Cierre de bloque en {}".format(position,color,should_close_at-now)
 
           # message_1 = "El precio actual en Binance es {}".format(binance_price)
           # message_2 = "\nTrend : {}"
