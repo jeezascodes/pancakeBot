@@ -17,7 +17,7 @@ parser.add_option("--time_window",
                   dest="time_window",
                   type="int",
                   default=15,
-                  help="seconds before lock when live round will be checked")
+                  help="seconds before lock when live round will be checked and window will be showed")
 parser.add_option("--round_duration",
                   dest="round_duration",
                   type="int",
@@ -44,6 +44,14 @@ PRICE_MINIMUM_DIFFERENCE = options.difference_percentage
 
 current_active_round_id = None
 round_processed = False
+
+root = Tk()
+root.geometry("600x200")
+t = Label(root, text = 'A title', font = "50") 
+t.pack()
+m = Label(root, text = 'Some message', font="30")
+m.pack()
+
 while True:
   
   if current_active_round_id is None or round_processed:
@@ -54,6 +62,11 @@ while True:
   starts_at = int(live_round['lockAt'])
   should_close_at = starts_at + ROUND_DURATION
   should_wake_up_at = should_close_at - TIME_WINDOW
+
+  if now >= should_close_at:
+    print("El bloque {} esta en proceso de cierre".format(live_round['id']))
+    time.sleep(1)
+    continue
     
   # Si el bloque es nuevo vemos por cuanto tiempo dormir
   if current_active_round_id != live_round['id']:
@@ -85,18 +98,11 @@ while True:
     if base_price_difference >= PRICE_MINIMUM_DIFFERENCE:
       
       print("Se cumple la diferencia")
-      root = Tk()
-      root.geometry("600x200")
-      t = Label(root, text = 'Some title', font = "50") 
-      t.pack()
-      m = Label(root, text = 'Some message', font="30")
-      m.pack()
       last_price_difference = base_price_difference
       current_price_difference = base_price_difference
       trend_string = ""
       while now < should_close_at:
 
-        print("Se refrescara la ventana")
         if current_price_difference >= PRICE_MINIMUM_DIFFERENCE:
           position = 'Bull' if binance_price > chainlink_price['price'] else 'Bear'
           title = "Apostar a {}".format(position)
@@ -118,6 +124,7 @@ while True:
         t.configure(text=title)
         m.configure(text=message)
         root.update()
+        root.deiconify()
 
         time.sleep(0.5)
         now = round(datetime.timestamp(datetime.now()),0)
@@ -125,7 +132,7 @@ while True:
         current_price_difference = abs(binance_price - chainlink_price['price'])/chainlink_price['price']
 
       print("Se destruira la ventana")
-      root.destroy()
+      root.withdraw()
       round_processed = True
     else:
       seconds_left = should_close_at - now
