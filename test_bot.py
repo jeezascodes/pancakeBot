@@ -2,8 +2,9 @@ from web3 import Web3
 import json
 from decimal import *
 from optparse import OptionParser
+import datetime
 
-PRIVATE_KEY = "enter_your_key_here" 
+PRIVATE_KEY = "private_KEY" 
 
 parser = OptionParser()
 parser.add_option("--type",
@@ -16,11 +17,17 @@ parser.add_option("--calc_bet",
                   action="store_true",
                   default=False,
                   help="calculate Bet according to Balance")
+parser.add_option("--claim",
+                  dest="epothClaim",
+                  type="int",
+                  default=0,
+                  help="Epoch to Claim")
 
 (options, args) = parser.parse_args()
 
 BET_TYPE = options.betType
 CALC_BET = options.calcBet
+EPOCH_CLAIM = options.epothClaim
 
 
 web3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
@@ -34,6 +41,7 @@ bnbRisk = 1
 betPercent = 0.2  
  
 # initialBalance = 1104537757360386385
+begin_time = datetime.datetime.now()
 
 nonce = web3.eth.getTransactionCount(juan)
 
@@ -51,37 +59,64 @@ abiPancake = '[{"inputs":[{"internalType":"contract AggregatorV3Interface","name
 addrPancake = '0x516ffd7D1e0Ca40b1879935B2De87cb20Fc1124b'
 contractPancake = web3.eth.contract(address=addrPancake, abi=abiPancake)
 
-print(bet)
+
 if BET_TYPE == 'bear':
     
     print("beting bear: ",bet / baseUnit )
 
-    transaction = contractPancake.functions.betBear(bet).buildTransaction({
-        'gas': 150,
+    transaction = contractPancake.functions.betBear().buildTransaction({
+        'gas': 160000,
         # 'gasPrice': web3.toWei('1', 'gwei'),
         'chainId': 56,
         'from': juan,
-        'nonce': nonce
+        'nonce': nonce,
+        'value': bet
     }) 
 
-   
     signed_txn = web3.eth.account.signTransaction(transaction, private_key=PRIVATE_KEY)
-    web3.eth.sendRawTransaction(signed_txn.rawTransaction)
+    resultTransanction = web3.eth.sendRawTransaction(signed_txn.rawTransaction)
+    print(resultTransanction)
+    # print(web3.toText(resultTransanction))
 
 elif BET_TYPE == "bull":
     
     print("beting bull: ",bet / baseUnit )
 
-    transaction = contractPancake.functions.betBull(bet).buildTransaction({
-        'gas': 150,
+    transaction = contractPancake.functions.betBull().buildTransaction({
+        'gas': 160000,
         # 'gasPrice': web3.toWei('1', 'gwei'),
         'chainId': 56,
         'from': juan,
-        'nonce': nonce
+        'nonce': nonce,
+        'value': bet
     }) 
 
     signed_txn = web3.eth.account.signTransaction(transaction, private_key=PRIVATE_KEY)
-    web3.eth.sendRawTransaction(signed_txn.rawTransaction)
-
+    resultTransanction = web3.eth.sendRawTransaction(signed_txn.rawTransaction)
+    print(resultTransanction)
+    # print(web3.toText(resultTransanction))
 else:
-    print('Invalid bet') 
+    print('not beting')
+    if EPOCH_CLAIM!=0:
+        # 5452
+        if contractPancake.functions.claimable(EPOCH_CLAIM,juan).call():
+            print(' claiming')
+            transaction = contractPancake.functions.claim(EPOCH_CLAIM).buildTransaction({
+                'gas': 160000,
+                # 'gasPrice': web3.toWei('1', 'gwei'),
+                'chainId': 56,
+                'from': juan,
+                'nonce': nonce,
+            }) 
+        
+            signed_txn = web3.eth.account.signTransaction(transaction, private_key=PRIVATE_KEY)
+            resultTransanction = web3.eth.sendRawTransaction(signed_txn.rawTransaction)
+            print(resultTransanction)
+
+        else:
+            print('not claimable')
+
+
+    
+
+print(datetime.datetime.now() - begin_time)
