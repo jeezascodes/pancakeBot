@@ -2,7 +2,7 @@ from web3 import Web3
 import datetime
 from constants import abiPancake
 
-PRIVATE_KEY = "8a2685788a9dfb16c3e7192737078c7733d54ee66531e31312ba0602aa0d79d2"
+PRIVATE_KEY = ""
 
 
 web3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
