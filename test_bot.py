@@ -141,5 +141,3 @@ def place_bet(is_bear):
 #         else:
 #             print('not claimable')
 
-
-print(datetime.datetime.now() - begin_time)
