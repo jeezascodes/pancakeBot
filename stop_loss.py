@@ -7,7 +7,7 @@ from utils import get_wallet_balance, get_if_user_has_open_bet
 
 now = round(datetime.timestamp(datetime.now()), 0)
 
-jesus = '0xD13B5203aB41965ac93AA0938223c15a257444B0'
+jesus = '0xf764B5925e530C5D5939C4d47CDCABB8F1D63bD0'
 
 
 INITIAL_BALANCE = get_wallet_balance(jesus)

@@ -78,7 +78,7 @@ def get_pancake_last_rounds(first, skip):
 
 def get_claimable_rounds():
     query = """query{
-            users(where: {address: "0xD13B5203aB41965ac93AA0938223c15a257444B0"}){
+            users(where: {address: "0xf764B5925e530C5D5939C4d47CDCABB8F1D63bD0"}){
             id
             address
             bets (where: {claimed: false}) {
@@ -93,15 +93,19 @@ def get_claimable_rounds():
             }"""
 
     result = run_query(query)
-    bets = result['data']['users'][0]['bets']
-    filterd_bets = list(
-        filter(lambda x: x['position'] == x['round']['position'], bets))
-    return filterd_bets
+
+    if len(result['data']['users']) < 1:
+        return []
+    else:
+        bets = result['data']['users'][0]['bets']
+        filterd_bets = list(
+            filter(lambda x: x['position'] == x['round']['position'], bets))
+        return filterd_bets
 
 
 def get_if_user_has_open_bet():
     query = """query{
-            users(where: {address: "0xD13B5203aB41965ac93AA0938223c15a257444B0"}){
+            users(where: {address: "0xf764B5925e530C5D5939C4d47CDCABB8F1D63bD0"}){
             id
             address
             bets (first: 1, orderBy: createdAt, orderDirection: desc) {
@@ -116,9 +120,11 @@ def get_if_user_has_open_bet():
             }"""
 
     result = run_query(query)
-    bets = result['data']['users'][0]['bets']
-
-    return not bool(bets[0]['round']['position'])
+    if len(result['data']['users']) < 1:
+        return False
+    else:
+        bets = result['data']['users'][0]['bets']
+        return not bool(bets[0]['round']['position'])
 
 
 def get_wallet_balance(wallet):
@@ -126,3 +132,7 @@ def get_wallet_balance(wallet):
         return web3.eth.getBalance(wallet)
     except:
         print('got error from web3 try again')
+
+
+# def get_pending_transactions():
+#     web3.eth.filter('pending')
