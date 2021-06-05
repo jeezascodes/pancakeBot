@@ -58,7 +58,7 @@ def get_rounds_from_pancake(min_t, max_t, step=1000, seconds_left=10):
 
         for element in response['data']['rounds']:
             new_element = copy.deepcopy(element)
-            new_element['before_lock_window'] = int(new_element['lockAt']) - seconds_left
+            new_element['before_lock_window'] = int(new_element['lockAt']) + 300 - seconds_left
             result.append(new_element)
             
 
@@ -71,10 +71,39 @@ def get_rounds_from_pancake(min_t, max_t, step=1000, seconds_left=10):
     return result
 
 
-MIN_TIMESTAMP = 1622178000
-MAX_TIMESTAMP = 1622523600
-PREVIOUS_WINDOW = 5
-FILE = 'pancake_data.csv'
+parser = OptionParser()
+parser.add_option("--begin_date", dest="min_date",
+                  help="minimum date of a round lock to be considered, use '%Y-%m-%d' format")
+parser.add_option("--end_date", dest="max_date",
+                  help="maximum date of a round lock to be considered, use '%Y-%m-%d' format")
+parser.add_option("--window_before_close",
+                  dest="window_before_close",
+                  type="int",
+                  help="Seconds before the close of the round where the calculations will be made",
+                  default=10)
+parser.add_option("--output_file",
+                  dest="output_file",
+                  help="csv where the prices will be dumped",
+                  default="pancake_data.csv")
+
+(options, args) = parser.parse_args()
+
+if not options.min_date or not options.max_date:
+    parser.error(" --begin_date and --end_date are required")
+    sys.exit(2)
+
+try:
+    min_date = datetime.strptime(options.min_date, '%Y-%m-%d')
+    max_date = datetime.strptime(options.max_date, '%Y-%m-%d') + timedelta(1)
+except:
+    parser.error(" --begin_date and --end_date should be YYYY-MM-DD")
+    sys.exit(2)
+
+
+MIN_TIMESTAMP = datetime.timestamp(min_date)
+MAX_TIMESTAMP = datetime.timestamp(max_date)
+PREVIOUS_WINDOW = options.window_before_close
+FILE = options.output_file
 
 collected_data = get_rounds_from_pancake(MIN_TIMESTAMP,MAX_TIMESTAMP, seconds_left=PREVIOUS_WINDOW)
 all_fields = ROUND_FIELDS + ['before_lock_window']
