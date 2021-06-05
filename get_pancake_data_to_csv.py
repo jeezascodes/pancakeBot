@@ -2,7 +2,9 @@ from web3 import Web3
 import csv
 import requests
 import copy
-
+from datetime import timedelta
+from datetime import datetime
+from optparse import OptionParser
 
 ROUND_FIELDS = [
 'id', 'position', 'startAt', 'startBlock', 'startHash', 'lockAt', 'lockBlock',
@@ -41,7 +43,7 @@ def get_rounds_from_pancake(min_t, max_t, step=1000, seconds_left=10):
             }}
         }}
     """
-
+    
     fetched_elements = 0
     need_extra_request = True
     while need_extra_request:
@@ -100,8 +102,9 @@ except:
     sys.exit(2)
 
 
-MIN_TIMESTAMP = datetime.timestamp(min_date)
-MAX_TIMESTAMP = datetime.timestamp(max_date)
+MIN_TIMESTAMP = int(datetime.timestamp(min_date))
+MAX_TIMESTAMP = int(datetime.timestamp(max_date))
+
 PREVIOUS_WINDOW = options.window_before_close
 FILE = options.output_file
 
