@@ -2,6 +2,8 @@ from datetime import datetime
 from web3 import Web3
 import requests
 
+web3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
+
 
 def get_binance_last_price():
     url = 'https://api.binance.com/api/v3/ticker/price'
@@ -95,3 +97,32 @@ def get_claimable_rounds():
     filterd_bets = list(
         filter(lambda x: x['position'] == x['round']['position'], bets))
     return filterd_bets
+
+
+def get_if_user_has_open_bet():
+    query = """query{
+            users(where: {address: "0xD13B5203aB41965ac93AA0938223c15a257444B0"}){
+            id
+            address
+            bets (first: 1, orderBy: createdAt, orderDirection: desc) {
+            position
+            claimed
+            round {
+                position
+                id
+            }
+            }
+            }
+            }"""
+
+    result = run_query(query)
+    bets = result['data']['users'][0]['bets']
+
+    return not bool(bets[0]['round']['position'])
+
+
+def get_wallet_balance(wallet):
+    try:
+        return web3.eth.getBalance(wallet)
+    except:
+        print('got error from web3 try again')
