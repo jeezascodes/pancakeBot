@@ -1,6 +1,8 @@
 from web3 import Web3
 import csv
-
+from datetime import datetime
+from datetime import timedelta
+from optparse import OptionParser
 
 def get_chainlink_data_using_interval(min_t, max_t, seed=None, average=90):
     web3 = Web3(Web3.HTTPProvider('https://bsc-dataseed1.ninicoin.io/'))
@@ -81,11 +83,33 @@ def get_chainlink_data_using_count(count=4500):
         except:
             print("An exception occurred")
 
+parser = OptionParser()
+parser.add_option("--begin_date", dest="min_date",
+                  help="minimum date of a round lock to be considered, use '%Y-%m-%d' format")
+parser.add_option("--end_date", dest="max_date",
+                  help="maximum date of a round lock to be considered, use '%Y-%m-%d' format")
+parser.add_option("--output_file",
+                  dest="output_file",
+                  help="csv where the prices will be dumped",
+                  default="chainlink_data.csv")
+
+(options, args) = parser.parse_args()
+
+if not options.min_date or not options.max_date:
+    parser.error(" --begin_date and --end_date are required")
+    sys.exit(2)
+
+try:
+    min_date = datetime.strptime(options.min_date, '%Y-%m-%d')
+    max_date = datetime.strptime(options.max_date, '%Y-%m-%d') + timedelta(1)
+except:
+    parser.error(" --begin_date and --end_date should be YYYY-MM-DD")
+    sys.exit(2)
 
 
-MIN_TIMESTAMP = 1622178000
-MAX_TIMESTAMP = 1622523600
-FILE = 'chainlink_data.csv'
+MIN_TIMESTAMP = datetime.timestamp(min_date)
+MAX_TIMESTAMP = datetime.timestamp(max_date)
+FILE = options.output_file
 
 #collected_data = get_chainlink_data_using_count(4500)
 collected_data = get_chainlink_data_using_interval(MIN_TIMESTAMP,MAX_TIMESTAMP)
