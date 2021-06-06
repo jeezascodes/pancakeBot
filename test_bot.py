@@ -2,11 +2,11 @@ from web3 import Web3
 import datetime
 from constants import abiPancake
 
-PRIVATE_KEY = ""
+PRIVATE_KEY = "d839c1c7adb1bef06625c66f66214e83a5c9746a77b076b7e963ca8ea809fa9f"
 
 
 web3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
-jesus = '0xD13B5203aB41965ac93AA0938223c15a257444B0'
+jesus = ''
 
 minBet = 100000000000000000
 baseUnit = 1000000000000000000
