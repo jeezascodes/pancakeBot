@@ -29,6 +29,7 @@ should_close_at = starts_at + ROUND_DURATION
 should_bet_at = should_close_at - TIME_WINDOW
 checked_claimed = False
 
+just_did_a_bet = False
 
 while True:
 
@@ -60,11 +61,18 @@ while True:
             base_price_difference = abs(
                 binance_price - chainlink_price['price'])/chainlink_price['price']
 
+            PRICE_MINIMUM_DIFFERENCE = (
+                PRICE_MINIMUM_DIFFERENCE if not just_did_a_bet else PRICE_MINIMUM_DIFFERENCE + 0.001
+            )
+
             if base_price_difference >= PRICE_MINIMUM_DIFFERENCE:
+                just_did_a_bet = True
                 print('\njust did a bet')
                 place_bet(bool(binance_price < chainlink_price['price']))
                 # llamar función de juan
             else:
                 print("\ndidn't did a bet")
+                just_did_a_bet = False
         else:
             print("didnt did a bet")
+            just_did_a_bet = False
