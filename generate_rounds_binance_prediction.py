@@ -5,6 +5,8 @@ from datetime import datetime
 from datetime import timedelta
 import requests
 import time
+from optparse import OptionParser
+
 
 
 def nearest_timestamp(dict, value):
@@ -74,13 +76,45 @@ def get_binance_price_for_timestamp(timestamp):
      
 
 
+# Verify Parameters
+parser = OptionParser()
+parser.add_option("--begin_date", dest="min_date",
+                  help="minimum date of a round lock to be considered, use '%Y-%m-%d' format")
+parser.add_option("--end_date", dest="max_date",
+                  help="maximum date of a round lock to be considered, use '%Y-%m-%d' format")
+parser.add_option("--output_file",
+                  dest="output_file",
+                  help="csv where the results of every round will be dumped",
+                  default="binance_forecast_result.csv")
+parser.add_option("--input_chainlink",
+                  dest="input_chainlink",
+                  help="csv file with chainlink prices",
+                  default="chainlink_data.csv")
+parser.add_option("--input_pancake",
+                  dest="input_pancake",
+                  help="csv file with pancake rounds",
+                  default="pancake_data.csv")
 
-MIN_TIMESTAMP = 1622178000
-#MAX_TIMESTAMP = 1622178000 + 600
-MAX_TIMESTAMP = 1622523600
-CHAINLINK_ORIGIN_CSV_FILE = 'chainlink_data.csv'
-PANCAKE_ORIGIN_CSV_FILE = 'pancake_data.csv'
-RESULT_FILE = 'binance_forecast_result.csv'
+(options, args) = parser.parse_args()
+
+if not options.min_date or not options.max_date:
+    parser.error(" --begin_date and --end_date are required")
+    sys.exit(2)
+
+try:
+    min_date = datetime.strptime(options.min_date, '%Y-%m-%d')
+    max_date = datetime.strptime(options.max_date, '%Y-%m-%d') + timedelta(1)
+except:
+    parser.error(" --begin_date and --end_date should be YYYY-MM-DD")
+    sys.exit(2)
+
+
+
+MIN_TIMESTAMP = datetime.timestamp(min_date)
+MAX_TIMESTAMP = datetime.timestamp(max_date) 
+CHAINLINK_ORIGIN_CSV_FILE = options.input_chainlink
+PANCAKE_ORIGIN_CSV_FILE = options.input_pancake
+RESULT_FILE = options.output_file
 BINANCE_API_URL = 'https://api.binance.com'
 CURRENCY_SYMBOL = 'BNBUSDT'
 
