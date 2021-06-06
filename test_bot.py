@@ -1,12 +1,17 @@
 from web3 import Web3
 import datetime
 from constants import abiPancake
+import os
+from dotenv import load_dotenv
+from constants import wallet, pancake_address, network_provider
 
-PRIVATE_KEY = "d839c1c7adb1bef06625c66f66214e83a5c9746a77b076b7e963ca8ea809fa9f"
+
+load_dotenv()
+
+PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 
 
-web3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
-jesus = ''
+web3 = Web3(Web3.HTTPProvider(network_provider))
 
 minBet = 100000000000000000
 baseUnit = 1000000000000000000
@@ -20,24 +25,24 @@ begin_time = datetime.datetime.now()
 
 # if CALC_BET:
 def calculate_bet():
-    balance = web3.eth.getBalance(jesus)
+    balance = web3.eth.getBalance(wallet)
     if balance * betPercent >= baseUnit * bnbRisk:
         return baseUnit * bnbRisk
     else:
         return int(balance * betPercent)
 
 
-addrPancake = '0x516ffd7D1e0Ca40b1879935B2De87cb20Fc1124b'
+addrPancake = pancake_address
 contractPancake = web3.eth.contract(address=addrPancake, abi=abiPancake)
 
 
 def place_bet(is_bear):
-    nonce = web3.eth.getTransactionCount(jesus)
+    nonce = web3.eth.getTransactionCount(wallet)
     print('placing bet ', ['bear' if is_bear else 'bull'])
     bet_config = {
         'gas': 160000,
         'chainId': 56,
-        'from': jesus,
+        'from': wallet,
         'nonce': nonce,
         'value': calculate_bet()
     }
@@ -53,13 +58,13 @@ def place_bet(is_bear):
 
 
 def claim_winnings(ROUND_ID):
-    if contractPancake.functions.claimable(ROUND_ID, jesus).call():
+    if contractPancake.functions.claimable(ROUND_ID, wallet).call():
         print(' claiming')
-        nonce = web3.eth.getTransactionCount(jesus)
+        nonce = web3.eth.getTransactionCount(wallet)
         transaction = contractPancake.functions.claim(ROUND_ID).buildTransaction({
             'gas': 160000,
             'chainId': 56,
-            'from': jesus,
+            'from': wallet,
             'nonce': nonce,
         })
 

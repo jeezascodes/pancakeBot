@@ -1,8 +1,9 @@
 from datetime import datetime
 from web3 import Web3
 import requests
+from constants import wallet, network_provider, chainlink_addres
 
-web3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
+web3 = Web3(Web3.HTTPProvider(network_provider))
 
 
 def get_binance_last_price():
@@ -23,7 +24,7 @@ def get_chainlink_last_round_price():
         '{"inputs":[],"name":"latestRoundData","outputs":[{"internalType":"uint80","name":"roundId","type":"uint80"},{"internalType":"int256","name":"answer","type":"int256"},{"internalType":"uint256","name":"startedAt","type":"uint256"},{"internalType":"uint256","name":"updatedAt","type":"uint256"},{"internalType":"uint80","name":"answeredInRound","type":"uint80"}],"stateMutability":"view","type":"function"},'
         '{"inputs":[],"name":"version","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]'
     )
-    addr = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE'
+    addr = chainlink_addres
     contract = web3.eth.contract(address=addr, abi=abi)
     data = contract.functions.latestRoundData().call()
     now = round(datetime.timestamp(datetime.now()), 0)
@@ -77,20 +78,20 @@ def get_pancake_last_rounds(first, skip):
 
 
 def get_claimable_rounds():
-    query = """query{
-            users(where: {address: "0xf764B5925e530C5D5939C4d47CDCABB8F1D63bD0"}){
+    query = """query{{
+            users(where: {{address: "{currentWallet}"}}){{
             id
             address
-            bets (where: {claimed: false}) {
+            bets (where: {{claimed: false}}) {{
             position
             claimed
-            round {
+            round {{
                 position
                 id
-            }
-            }
-            }
-            }"""
+            }}
+            }}
+            }}
+            }}""".format(currentWallet=wallet)
 
     result = run_query(query)
 
@@ -104,20 +105,21 @@ def get_claimable_rounds():
 
 
 def get_if_user_has_open_bet():
-    query = """query{
-            users(where: {address: "0xf764B5925e530C5D5939C4d47CDCABB8F1D63bD0"}){
+    query = """query{{
+            users(where: {{address: "{currentWallet}"}}){{
             id
             address
-            bets (first: 1, orderBy: createdAt, orderDirection: desc) {
+            bets (first: 1, orderBy: createdAt, orderDirection: desc) {{
             position
             claimed
-            round {
+            amount
+            round {{
                 position
                 id
-            }
-            }
-            }
-            }"""
+            }}
+            }}
+            }}
+            }}""".format(currentWallet=wallet)
 
     result = run_query(query)
     if len(result['data']['users']) < 1:
