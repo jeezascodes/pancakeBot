@@ -62,7 +62,7 @@ while True:
                 binance_price - chainlink_price['price'])/chainlink_price['price']
 
             PRICE_MINIMUM_DIFFERENCE = (
-                0.00350240113364098 if just_did_a_bet == 0 else 0.00350240113364098 + 0.001
+                0.00400240113364098 if just_did_a_bet == 0 else 0.00400240113364098 + 0.001
             )
 
             print(PRICE_MINIMUM_DIFFERENCE)
