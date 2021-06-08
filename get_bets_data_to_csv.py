@@ -40,6 +40,12 @@ def get_bets_from_pancake(min_t, max_t, wallet, step=1000):
                 round {{
                     position
                     id
+                    totalBets
+                    totalAmount
+                    bullBets
+                    bullAmount
+                    bearBets
+                    bearAmount
                 }}
             }}
         }}
@@ -67,6 +73,12 @@ def get_bets_from_pancake(min_t, max_t, wallet, step=1000):
             new_element = copy.deepcopy(bet)
             new_element['round_id']= new_element['round']['id']
             new_element['round_position'] = new_element['round']['position']
+            new_element['round_totalBets'] = new_element['round']['totalBets']
+            new_element['round_totalAmount'] = new_element['round']['totalAmount']
+            new_element['round_bullBets'] = new_element['round']['bullBets']
+            new_element['round_bullAmount'] = new_element['round']['bullAmount']
+            new_element['round_bearBets'] = new_element['round']['bearBets']
+            new_element['round_bearAmount'] = new_element['round']['bearAmount']
             new_element.pop('round',None)
             result.append(new_element)
             
