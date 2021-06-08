@@ -10,7 +10,7 @@ options = {
     'time_window': 10,
     'round_duration': 300,
     'chainlink_age': 70,
-    'difference_percentage': 0.00250240113364098
+    'difference_percentage': 0.00350240113364098
 }
 
 TIME_WINDOW = options['time_window']
@@ -29,7 +29,7 @@ should_close_at = starts_at + ROUND_DURATION
 should_bet_at = should_close_at - TIME_WINDOW
 checked_claimed = False
 
-just_did_a_bet = False
+just_did_a_bet = 0
 
 while True:
 
@@ -62,17 +62,26 @@ while True:
                 binance_price - chainlink_price['price'])/chainlink_price['price']
 
             PRICE_MINIMUM_DIFFERENCE = (
-                PRICE_MINIMUM_DIFFERENCE if not just_did_a_bet else PRICE_MINIMUM_DIFFERENCE + 0.001
+                0.00400240113364098 if just_did_a_bet == 0 else 0.00400240113364098 + 0.001
             )
 
+            print(PRICE_MINIMUM_DIFFERENCE)
+
             if base_price_difference >= PRICE_MINIMUM_DIFFERENCE:
-                just_did_a_bet = True
-                print('\njust did a bet')
-                place_bet(bool(binance_price < chainlink_price['price']))
+                just_did_a_bet += 1
+                print('\njust did a bet', just_did_a_bet)
+                print(PRICE_MINIMUM_DIFFERENCE)
+                print('TIME_WINDOW', TIME_WINDOW)
+                # here the bot is betting oposite to the heuristic if it bets more than twice in a row
+                if just_did_a_bet > 1:
+                    place_bet(bool(binance_price >
+                                   chainlink_price['price']))
+                else:
+                    place_bet(bool(binance_price < chainlink_price['price']))
                 # llamar función de juan
             else:
                 print("\ndidn't did a bet")
-                just_did_a_bet = False
+                just_did_a_bet = 0
         else:
             print("didnt did a bet")
-            just_did_a_bet = False
+            just_did_a_bet = 0
