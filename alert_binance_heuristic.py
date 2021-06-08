@@ -62,7 +62,7 @@ while True:
                 binance_price - chainlink_price['price'])/chainlink_price['price']
 
             PRICE_MINIMUM_DIFFERENCE = (
-                0.00400240113364098 if just_did_a_bet == 0 else 0.00400240113364098 + 0.001
+                0.00450240113364098 if just_did_a_bet == 0 else 0.00450240113364098 + 0.001
             )
 
             print(PRICE_MINIMUM_DIFFERENCE)
@@ -73,7 +73,7 @@ while True:
                 print(PRICE_MINIMUM_DIFFERENCE)
                 print('TIME_WINDOW', TIME_WINDOW)
                 # here the bot is betting oposite to the heuristic if it bets more than twice in a row
-                if just_did_a_bet > 1:
+                if just_did_a_bet > 2:
                     place_bet(bool(binance_price >
                                    chainlink_price['price']))
                 else:
