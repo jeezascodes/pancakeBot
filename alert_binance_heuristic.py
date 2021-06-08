@@ -7,7 +7,7 @@ from utils import get_claimable_rounds
 from test_bot import place_bet
 
 options = {
-    'time_window': 12,
+    'time_window': 10,
     'round_duration': 300,
     'chainlink_age': 70,
     'difference_percentage': 0.00350240113364098
@@ -62,15 +62,16 @@ while True:
                 binance_price - chainlink_price['price'])/chainlink_price['price']
 
             PRICE_MINIMUM_DIFFERENCE = (
-                0.00400240113364098 if just_did_a_bet == 0 else 0.00350240113364098 + 0.001
+                0.00350240113364098 if just_did_a_bet == 0 else 0.00350240113364098 + 0.001
             )
 
             print(PRICE_MINIMUM_DIFFERENCE)
 
             if base_price_difference >= PRICE_MINIMUM_DIFFERENCE:
                 just_did_a_bet += 1
-                print('\njust did a bet')
+                print('\njust did a bet', just_did_a_bet)
                 print(PRICE_MINIMUM_DIFFERENCE)
+                print('TIME_WINDOW', TIME_WINDOW)
                 # here the bot is betting oposite to the heuristic if it bets more than twice in a row
                 if just_did_a_bet > 1:
                     place_bet(bool(binance_price >
