@@ -6,6 +6,9 @@ from datetime import timedelta
 import requests
 import time
 from optparse import OptionParser
+import utils
+import os
+import sys
 
 
 
@@ -59,8 +62,8 @@ def get_binance_price_for_timestamp(timestamp):
      # before the timestamp, binance require the timestamps with milliseconds
      # precission so we add three zeroes, one second before the timestamp should
      # be enough, i am using 3 seconds just for precaution
-     end_timestamp_binance = (int(timestamp) * 1000)
-     start_timestamp_binace = end_timestamp_binance - 3000
+     end_timestamp_binance = int(timestamp) * 1000
+     start_timestamp_binace = end_timestamp_binance - 5000
 
      endpoint = '/api/v3/aggTrades'
      query_string = {
@@ -70,18 +73,21 @@ def get_binance_price_for_timestamp(timestamp):
         'limit' : 1
      }
      
-     response = requests.get(BINANCE_API_URL+endpoint,params=query_string)
-     data = response.json()[0]
-     return data['p']
-     
+     try: 
+        response = requests.get(BINANCE_API_URL+endpoint,params=query_string)
+        data = response.json()
+        if len(data) > 0:
+            return float(data[0]['p'])
+        else:
+            return -1
+     except Exception as e:
+         print(e)
+         sys.exit(2)   
 
 
 # Verify Parameters
 parser = OptionParser()
-parser.add_option("--begin_date", dest="min_date",
-                  help="minimum date of a round lock to be considered, use '%Y-%m-%d' format")
-parser.add_option("--end_date", dest="max_date",
-                  help="maximum date of a round lock to be considered, use '%Y-%m-%d' format")
+utils.add_date_options_to_parser(parser)
 parser.add_option("--output_file",
                   dest="output_file",
                   help="csv where the results of every round will be dumped",
@@ -90,65 +96,68 @@ parser.add_option("--input_chainlink",
                   dest="input_chainlink",
                   help="csv file with chainlink prices",
                   default="chainlink_data.csv")
-parser.add_option("--input_pancake",
-                  dest="input_pancake",
-                  help="csv file with pancake rounds",
-                  default="pancake_data.csv")
+parser.add_option("--time_before_lock",
+                  dest="time_before_lock",
+                  help="time in seconds before teorical lock (300 seconds after start of block) when prices will be evaluated",
+                  type="int",
+                  default=10)
+parser.add_option("--start_from_round",
+                  dest="start_from_round",
+                  help="start from a given round if the file has results already calculated",
+                  type="int",
+                  default=0)
+
+
 
 (options, args) = parser.parse_args()
 
-if not options.min_date or not options.max_date:
-    parser.error(" --begin_date and --end_date are required")
-    sys.exit(2)
+MIN_TIMESTAMP, MAX_TIMESTAMP = utils.process_date_options(parser, options)
 
-try:
-    min_date = datetime.strptime(options.min_date, '%Y-%m-%d')
-    max_date = datetime.strptime(options.max_date, '%Y-%m-%d') + timedelta(1)
-except:
-    parser.error(" --begin_date and --end_date should be YYYY-MM-DD")
-    sys.exit(2)
-
-
-
-MIN_TIMESTAMP = datetime.timestamp(min_date)
-MAX_TIMESTAMP = datetime.timestamp(max_date) 
 CHAINLINK_ORIGIN_CSV_FILE = options.input_chainlink
-PANCAKE_ORIGIN_CSV_FILE = options.input_pancake
 RESULT_FILE = options.output_file
 BINANCE_API_URL = 'https://api.binance.com'
 CURRENCY_SYMBOL = 'BNBUSDT'
+TIME_WINDOW = options.time_before_lock
+FIELDS = ['id','position','startAt','startBlock','startHash','lockAt','lockBlock','lockHash','lockPrice','endAt','endBlock','endHash','closePrice','totalBets','totalAmount','bullBets','bullAmount','bearBets','bearAmount','before_lock_window','chainlink_price_age','chainlink_price','binance_price','binance_difference','binance_position']
 
-
-
-
-pancake_base_data = load_pancake_data_from_csv(PANCAKE_ORIGIN_CSV_FILE,MIN_TIMESTAMP,MAX_TIMESTAMP)
+pancake_base_data = utils.get_rounds_from_pancake_using_range(MIN_TIMESTAMP,MAX_TIMESTAMP)
 chainlink_dict = load_chainlink_timestamps_from_csv(CHAINLINK_ORIGIN_CSV_FILE,MIN_TIMESTAMP,MAX_TIMESTAMP)
 
+append_write = 'a' if os.path.exists(RESULT_FILE) else 'w'
+file = open(RESULT_FILE, append_write, newline='')
+writer = csv.DictWriter(file, fieldnames=FIELDS)
+if append_write == 'w':
+    writer.writeheader()
+
+i = 0
+total_rounds = len(pancake_base_data)
 
 for p_round in pancake_base_data:
 
-    before_lock_timestamp = int(p_round['before_lock_window'])
-    chainlink_timestamp = nearest_timestamp(chainlink_dict,before_lock_timestamp)
-    if chainlink_timestamp > 0:
-        chainlink_price =  chainlink_dict[chainlink_timestamp]
-        binance_price = float(get_binance_price_for_timestamp(before_lock_timestamp))
-        lock_price = float(p_round['lockPrice'])
-        p_round['chainlink_price_age'] = before_lock_timestamp - int(chainlink_timestamp)
-        p_round['chainlink_price'] = chainlink_price
-        p_round['binance_price'] = binance_price
-        p_round['binance_difference'] = abs(binance_price - lock_price)/lock_price
-        p_round['binance_position'] = 'Bull' if binance_price > chainlink_price else 'Bear'
-        time.sleep(0.1)
-    else:
-        p_round['chainlink_price_age'] = 'N/A'
-        p_round['chainlink_price'] = 'N/A'
-        p_round['binance_price'] = 'N/A'
-        p_round['binance_difference'] = 'N/A'
-        p_round['binance_position'] = 'N/A'
-    print(p_round['lockAt'],"/",MAX_TIMESTAMP)
-
-file = open(RESULT_FILE, 'w', newline='')
-with file:
-    writer = csv.DictWriter(file, fieldnames=list(pancake_base_data[0].keys()))
-    writer.writeheader()
-    writer.writerows(pancake_base_data)
+    if not int(p_round['id']) < options.start_from_round:
+        before_lock_timestamp = int(p_round['startAt']) + 300 - TIME_WINDOW
+        chainlink_timestamp = nearest_timestamp(chainlink_dict,before_lock_timestamp)
+        if chainlink_timestamp > 0:
+            chainlink_price =  chainlink_dict[chainlink_timestamp]
+            binance_price = float(get_binance_price_for_timestamp(before_lock_timestamp))
+            lock_price = float(p_round['lockPrice'])
+            p_round['chainlink_price_age'] = before_lock_timestamp - int(chainlink_timestamp)
+            p_round['chainlink_price'] = chainlink_price
+            p_round['binance_price'] = binance_price
+            p_round['binance_difference'] = abs(binance_price - chainlink_price)/chainlink_price
+            p_round['binance_position'] = 'Bull' if binance_price > chainlink_price else 'Bear'
+            p_round['before_lock_window'] = before_lock_timestamp
+            time.sleep(0.1)
+        else:
+            p_round['chainlink_price_age'] = 'N/A'
+            p_round['chainlink_price'] = 'N/A'
+            p_round['binance_price'] = 'N/A'
+            p_round['binance_difference'] = 'N/A'
+            p_round['binance_position'] = 'N/A'
+            p_rouud['before_lock_window'] = 0
+    
+        writer.writerow(p_round)
+    
+    i+=1
+    if i % 10 == 0:
+        print("processed: {} of {}".format(i, total_rounds))

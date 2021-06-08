@@ -4,6 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 from optparse import OptionParser
 from constants import chainlink_addres, chainlink_abi
+import utils
 
 
 def get_chainlink_data_using_interval(min_t, max_t, seed=None, average=90):
@@ -76,10 +77,7 @@ def get_chainlink_data_using_count(count=4500):
 
 
 parser = OptionParser()
-parser.add_option("--begin_date", dest="min_date",
-                  help="minimum date of a round lock to be considered, use '%Y-%m-%d' format")
-parser.add_option("--end_date", dest="max_date",
-                  help="maximum date of a round lock to be considered, use '%Y-%m-%d' format")
+utils.add_date_options_to_parser(parser)
 parser.add_option("--output_file",
                   dest="output_file",
                   help="csv where the prices will be dumped",
@@ -87,25 +85,11 @@ parser.add_option("--output_file",
 
 (options, args) = parser.parse_args()
 
-if not options.min_date or not options.max_date:
-    parser.error(" --begin_date and --end_date are required")
-    sys.exit(2)
 
-try:
-    min_date = datetime.strptime(options.min_date, '%Y-%m-%d')
-    max_date = datetime.strptime(options.max_date, '%Y-%m-%d') + timedelta(1)
-except:
-    parser.error(" --begin_date and --end_date should be YYYY-MM-DD")
-    sys.exit(2)
-
-
-MIN_TIMESTAMP = datetime.timestamp(min_date)
-MAX_TIMESTAMP = datetime.timestamp(max_date)
+MIN_TIMESTAMP, MAX_TIMESTAMP = utils.process_date_options(parser, options)
 FILE = options.output_file
 
-#collected_data = get_chainlink_data_using_count(4500)
-collected_data = get_chainlink_data_using_interval(
-    MIN_TIMESTAMP, MAX_TIMESTAMP)
+collected_data = get_chainlink_data_using_interval(MIN_TIMESTAMP, MAX_TIMESTAMP)
 
 file = open(FILE, 'w', newline='')
 

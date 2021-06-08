@@ -1,7 +1,10 @@
 from datetime import datetime
+from datetime import timedelta
+import pytz
 from web3 import Web3
 import requests
 from constants import wallet, network_provider, chainlink_addres
+import sys
 
 web3 = Web3(Web3.HTTPProvider(network_provider))
 
@@ -77,6 +80,57 @@ def get_pancake_last_rounds(first, skip):
     return result['data']['rounds']
 
 
+def get_rounds_from_pancake_using_range(min_t, max_t, step=1000):
+
+    ROUND_FIELDS = [
+        'id', 'position', 'startAt', 'startBlock', 'startHash', 'lockAt', 'lockBlock',
+        'lockHash', 'lockPrice', 'endAt', 'endBlock', 'endHash', 'closePrice',
+        'totalBets', 'totalAmount', 'bullBets', 'bullAmount', 'bearBets', 'bearAmount'
+    ]
+
+    result = []
+    query = """
+        query {{
+            rounds(
+                first: {quantity},
+                skip: {skip},
+                where: {{
+                    lockAt_gte: {min_t},
+                    lockAt_lt: {max_t}
+                }},
+                orderBy: id,
+                orderDirection: asc
+            ){{
+                {fields_list}
+            }}
+        }}
+    """
+    
+    fetched_elements = 0
+    need_extra_request = True
+    while need_extra_request:
+
+        new_elements = 0
+        response = run_query(query.format(
+            quantity=step,
+            skip=fetched_elements,
+            min_t=min_t,
+            max_t=max_t,
+            fields_list="\n".join(ROUND_FIELDS)
+            )
+        )
+
+        result += response['data']['rounds']
+        
+        # If there where less than 'step' elements, there is no
+        # need to do more requests, else do new request skipping already
+        # fetched elements
+        fetched_elements += len(response['data']['rounds'])
+        need_extra_request = step == len(response['data']['rounds'])
+    
+    return result
+
+
 def get_claimable_rounds():
     query = """query{{
             users(where: {{address: "{currentWallet}"}}){{
@@ -134,6 +188,83 @@ def get_wallet_balance(wallet):
         return web3.eth.getBalance(wallet)
     except:
         print('got error from web3 try again')
+
+
+
+def process_date_options(parser,parse_options):
+
+    result = []
+    if parse_options.begin_timestamp: 
+
+        if not parse_options.end_timestamp:
+            parser.error(" both begin_timestamp and --end_timestamp are required")
+            sys.exit(2)
+        
+        try:
+            result.append(int(parse_options.begin_timestamp))
+            result.append(int(parse_options.end_timestamp))
+        except:
+            parser.error("timestamps with wrong format")
+
+    else:
+
+        if not parse_options.begin_date or not parse_options.end_date:
+            parser.error(" --begin_date and --end_date are required")
+            sys.exit(2)
+        
+        try:
+            begin_date = datetime.strptime(parse_options.begin_date, '%Y-%m-%d')
+            end_date = datetime.strptime(parse_options.end_date, '%Y-%m-%d') + timedelta(1)
+        except:
+            parser.error(" --begin_date and --end_date should be YYYY-MM-DD")
+            sys.exit(2)
+
+        if parse_options.use_utc:
+            begin_date = pytz.utc.localize(begin_date)
+            end_date = pytz.utc.localize(end_date)
+        
+        result.append(int(datetime.timestamp(begin_date)))
+        result.append(int(datetime.timestamp(end_date)))
+
+    return result
+
+
+def add_date_options_to_parser(parser):
+
+    parser.add_option("--begin_date", dest="begin_date",
+                  help="minimum date of a round lock to be considered, use '%Y-%m-%d' format")
+    parser.add_option("--end_date", dest="end_date", 
+                    help="maximum date of a round lock to be considered, use '%Y-%m-%d' format")
+    parser.add_option("--use_utc", action="store_true",dest="use_utc", 
+                    help="Use the given dates on UTC")
+    parser.add_option("--begin_timestamp", dest="begin_timestamp", 
+                    help="begin timestamp (overrides begin_date)")
+    parser.add_option("--end_timestamp", dest="end_timestamp", 
+                    help="end timestamp (overrides end_date)")
+
+
+def get_trend(numbers):
+    rows = []
+    total_numbers = len(numbers)
+    currentValueNumber = 1
+    n = 0
+    while n < len(numbers):
+        rows.append({'row': currentValueNumber, 'number': numbers[n]})
+        currentValueNumber += 1
+        n += 1
+    sumLines = 0
+    sumNumbers = 0
+    sumMix = 0
+    squareOfs = 0
+    for k in rows:
+        sumLines += k['row']
+        sumNumbers += k['number']
+        sumMix += k['row']*k['number']
+        squareOfs += k['row'] ** 2
+    a = (total_numbers * sumMix) - (sumLines * sumNumbers)
+    b = (total_numbers * squareOfs) - (sumLines ** 2)
+    c = a/b
+    return c
 
 
 # def get_pending_transactions():
