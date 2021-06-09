@@ -1,16 +1,17 @@
 import requests
+import csv
 from datetime import datetime
 from datetime import timedelta
 import time
 import utils
-from utils import get_claimable_rounds
+from utils import get_claimable_rounds,append_dict_as_row
 from test_bot import place_bet
 
 options = {
     'time_window': 10,
     'round_duration': 300,
     'chainlink_age': 70,
-    'difference_percentage': 0.00350240113364098
+    'difference_percentage': 0.00400240113364098
 }
 
 TIME_WINDOW = options['time_window']
@@ -43,6 +44,7 @@ while True:
         should_bet_at = should_close_at - TIME_WINDOW
         time.sleep(1)
         if current_active_round_id is None or current_active_round_id != live_round['id']:
+            print('\n')
             print('New block ', live_round['id'])
             checked_claimed = False
         continue
@@ -61,27 +63,65 @@ while True:
             base_price_difference = abs(
                 binance_price - chainlink_price['price'])/chainlink_price['price']
 
-            PRICE_MINIMUM_DIFFERENCE = (
-                0.00400240113364098 if just_did_a_bet == 0 else 0.00400240113364098 + 0.001
+
+
+            PRICE_DIFFERENCE_TO_ENTER = (
+                PRICE_MINIMUM_DIFFERENCE if just_did_a_bet == 0 else PRICE_DIFFERENCE_TO_ENTER + 0.001
             )
 
-            print(PRICE_MINIMUM_DIFFERENCE)
+            csv_row = {
+                'round_id':current_active_round_id,
+                "chainlink_price_age":chainlink_price['age'],
+                'binance_price':binance_price,
+                'chainlink_price':chainlink_price['price'],
+                'price_difference':base_price_difference,
+                'price_difference_toEnter':PRICE_DIFFERENCE_TO_ENTER,
+                'position': 'bear' if bool(binance_price < chainlink_price['price']) else 'bull',
+                
+            }
 
-            if base_price_difference >= PRICE_MINIMUM_DIFFERENCE:
-                just_did_a_bet += 1
-                print('\njust did a bet', just_did_a_bet)
-                print(PRICE_MINIMUM_DIFFERENCE)
-                print('TIME_WINDOW', TIME_WINDOW)
+
+            if base_price_difference >= PRICE_DIFFERENCE_TO_ENTER:
+                just_did_a_bet = just_did_a_bet + 1
+
                 # here the bot is betting oposite to the heuristic if it bets more than twice in a row
-                if just_did_a_bet > 1:
-                    place_bet(bool(binance_price >
-                                   chainlink_price['price']))
-                else:
-                    place_bet(bool(binance_price < chainlink_price['price']))
+                # if just_did_a_bet > 2:
+                #     place_bet(bool(binance_price >
+                #                    chainlink_price['price']))
+                # else:
+                place_bet(bool(binance_price < chainlink_price['price']))
                 # llamar función de juan
+                
+             
+                csv_row['consecutives_bets']=just_did_a_bet
+                csv_row['decision']='place_bet'
             else:
-                print("\ndidn't did a bet")
+          
+     
+                csv_row['consecutives_bets']=just_did_a_bet
+                csv_row['decision']='small_price_difference'
+
                 just_did_a_bet = 0
+           
+            append_dict_as_row(csv_row)
+
         else:
-            print("didnt did a bet")
+           
+            
+            csv_row = {
+                'round_id':current_active_round_id,
+                "chainlink_price_age":chainlink_price['age'],
+                'binance_price':'undefined',
+                'chainlink_price':'undefined',
+                'price_difference':'undefined',
+                'price_difference_toEnter':PRICE_DIFFERENCE_TO_ENTER,
+                'position': 'undefined',
+                'consecutives_bets':just_did_a_bet,
+                'decision':'chainlink_price_too_old'
+            }
+
+
+            append_dict_as_row(csv_row)
+
             just_did_a_bet = 0
+

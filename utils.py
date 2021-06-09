@@ -3,6 +3,8 @@ from datetime import timedelta
 import pytz
 from web3 import Web3
 import requests
+import os
+from csv import DictWriter
 from constants import wallet, network_provider, chainlink_addres
 import sys
 
@@ -269,3 +271,22 @@ def get_trend(numbers):
 
 # def get_pending_transactions():
 #     web3.eth.filter('pending')
+def append_dict_as_row(dict_of_elem,file_name=wallet[0:8]+'_result.csv'):
+    # el nombre del archivo de salida son las primeros 8 caracteres del wallet
+    # mas result.csv
+
+    if os.path.exists(file_name):
+        append_write = 'a' # append if already exists
+    else:
+        append_write = 'w' # make a new file if not
+       
+    # Open file in append mode
+    field_names=dict_of_elem.keys()
+    with open(file_name, append_write, newline='') as write_obj:
+        # Create a writer object from csv module
+        dict_writer = DictWriter(write_obj, fieldnames=field_names)
+        # Add dictionary as wor in the csv
+        if append_write =='w':
+            dict_writer.writeheader()
+
+        dict_writer.writerow(dict_of_elem)
