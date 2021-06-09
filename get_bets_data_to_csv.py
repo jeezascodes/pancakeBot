@@ -2,9 +2,8 @@ from web3 import Web3
 import csv
 import requests
 import copy
-from datetime import timedelta
-from datetime import datetime
 from optparse import OptionParser
+import utils
     
 
 def run_query(query):
@@ -93,10 +92,7 @@ def get_bets_from_pancake(min_t, max_t, wallet, step=1000):
 
 
 parser = OptionParser()
-parser.add_option("--begin_date", dest="min_date",
-                  help="minimum date of a round lock to be considered, use '%Y-%m-%d' format")
-parser.add_option("--end_date", dest="max_date",
-                  help="maximum date of a round lock to be considered, use '%Y-%m-%d' format")
+utils.add_date_options_to_parser(parser)
 parser.add_option("--wallet_id",
                   dest="wallet_id",
                   help="Wallet that will be queried",
@@ -108,20 +104,8 @@ parser.add_option("--output_file",
 
 (options, args) = parser.parse_args()
 
-if not options.min_date or not options.max_date:
-    parser.error(" --begin_date and --end_date are required")
-    sys.exit(2)
 
-try:
-    min_date = datetime.strptime(options.min_date, '%Y-%m-%d')
-    max_date = datetime.strptime(options.max_date, '%Y-%m-%d') + timedelta(1)
-except:
-    parser.error(" --begin_date and --end_date should be YYYY-MM-DD")
-    sys.exit(2)
-
-
-MIN_TIMESTAMP = int(datetime.timestamp(min_date))
-MAX_TIMESTAMP = int(datetime.timestamp(max_date))
+MIN_TIMESTAMP, MAX_TIMESTAMP = utils.process_date_options(parser, options)
 FILE = options.output_file
 
 collected_data = get_bets_from_pancake(MIN_TIMESTAMP,MAX_TIMESTAMP,options.wallet_id)
