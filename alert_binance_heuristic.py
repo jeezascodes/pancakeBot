@@ -97,17 +97,16 @@ while True:
                 csv_row['decision']='place_bet'
             else:
           
-                just_did_a_bet = 0
      
                 csv_row['consecutives_bets']=just_did_a_bet
                 csv_row['decision']='small_price_difference'
 
+                just_did_a_bet = 0
            
             append_dict_as_row(csv_row)
 
         else:
            
-            just_did_a_bet = 0
             
             csv_row = {
                 'round_id':current_active_round_id,
@@ -124,4 +123,5 @@ while True:
 
             append_dict_as_row(csv_row)
 
+            just_did_a_bet = 0
 
