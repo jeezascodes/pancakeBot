@@ -11,7 +11,7 @@ options = {
     'time_window': 10,
     'round_duration': 300,
     'chainlink_age': 70,
-    'difference_percentage': 0.00400240113364098
+    'difference_percentage': 0.00171115983509094
 }
 
 TIME_WINDOW = options['time_window']
