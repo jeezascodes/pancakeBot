@@ -76,3 +76,23 @@ def claim_winnings(ROUND_ID):
 
     else:
         print('not claimable')
+
+def secure_winnigs(start_balance,percentage_target,saving_wallet):
+
+    balance = web3.eth.getBalance(wallet)
+    target_to_save = int(start_balance*(1+percentage_target))
+
+    if balance >= target_to_save:
+        saving=balance-start_balance
+        print('ahorrando papah: ',saving)
+        signed_txn = web3.eth.account.sign_transaction(dict(
+            nonce=web3.eth.get_transaction_count(wallet),
+            gas=160000,
+            chainId=56,
+            to=saving_wallet,
+            value=saving,
+            gasPrice=web3.eth.gas_price,   
+        ),private_key=PRIVATE_KEY)
+
+        resultTransanction = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        print(resultTransanction)
