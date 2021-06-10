@@ -114,7 +114,8 @@ for p_round in round_data:
             'bet' : bet_amount,
             'status' : 'won' if won_bet else 'lost',
             'earnings' : payout * bet_amount if won_bet else -bet_amount,
-            'payout' : payout
+            'winning_payout' : payout,
+            'bet_position': p_round['binance_position']
         }
         played_rounds.append(bet_info)
 
@@ -124,6 +125,7 @@ for p_round in round_data:
         else:
             portfolio_total -= bet_amount
             consecutive_errors.append(p_round['id'])
+        bet_info['wallet_balance'] = portfolio_total
 
         if len(consecutive_errors) == FAILURE_MAXIMUM:
             failure_log.append(consecutive_errors)
