@@ -11,7 +11,7 @@ options = {
     'time_window': 10,
     'round_duration': 300,
     'chainlink_age': 70,
-    'difference_percentage': 0.00400240113364098
+    'difference_percentage': 0.00171115983509094
 }
 
 TIME_WINDOW = options['time_window']
@@ -65,9 +65,11 @@ while True:
 
 
 
-            PRICE_DIFFERENCE_TO_ENTER = (
-                PRICE_MINIMUM_DIFFERENCE if just_did_a_bet == 0 else PRICE_DIFFERENCE_TO_ENTER + 0.001
-            )
+            # price_diference_to_enter = (
+            #     PRICE_MINIMUM_DIFFERENCE if just_did_a_bet == 0 else price_diference_to_enter + 0.001
+            # )
+
+            price_diference_to_enter=PRICE_MINIMUM_DIFFERENCE
 
             csv_row = {
                 'round_id':current_active_round_id,
@@ -75,13 +77,13 @@ while True:
                 'binance_price':binance_price,
                 'chainlink_price':chainlink_price['price'],
                 'price_difference':base_price_difference,
-                'price_difference_toEnter':PRICE_DIFFERENCE_TO_ENTER,
+                'price_difference_toEnter':price_diference_to_enter,
                 'position': 'bear' if bool(binance_price < chainlink_price['price']) else 'bull',
                 
             }
 
 
-            if base_price_difference >= PRICE_DIFFERENCE_TO_ENTER:
+            if base_price_difference >= price_diference_to_enter:
                 just_did_a_bet = just_did_a_bet + 1
 
                 # here the bot is betting oposite to the heuristic if it bets more than twice in a row
@@ -114,7 +116,7 @@ while True:
                 'binance_price':'undefined',
                 'chainlink_price':'undefined',
                 'price_difference':'undefined',
-                'price_difference_toEnter':PRICE_DIFFERENCE_TO_ENTER,
+                'price_difference_toEnter':price_diference_to_enter,
                 'position': 'undefined',
                 'consecutives_bets':just_did_a_bet,
                 'decision':'chainlink_price_too_old'
