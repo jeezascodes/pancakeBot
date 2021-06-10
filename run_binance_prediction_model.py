@@ -6,7 +6,7 @@ from datetime import timedelta
 import requests
 import time
 from optparse import OptionParser
-
+import utils
 
     
 def load_data_from_csv(file, min_t, max_t):
@@ -25,10 +25,7 @@ def load_data_from_csv(file, min_t, max_t):
 
 # Verify Parameters
 parser = OptionParser()
-parser.add_option("--begin_date", dest="min_date",
-                  help="minimum date of a round lock to be considered, use '%Y-%m-%d' format")
-parser.add_option("--end_date", dest="max_date",
-                  help="maximum date of a round lock to be considered, use '%Y-%m-%d' format")
+utils.add_date_options_to_parser(parser)
 parser.add_option("--output_file",
                   dest="output_file",
                   help="csv where the results of every bet will be dumped",
@@ -72,20 +69,7 @@ parser.add_option("--consecutive_errors",
 
 (options, args) = parser.parse_args()
 
-if not options.min_date or not options.max_date:
-    parser.error(" --begin_date and --end_date are required")
-    sys.exit(2)
-
-try:
-    min_date = datetime.strptime(options.min_date, '%Y-%m-%d')
-    max_date = datetime.strptime(options.max_date, '%Y-%m-%d') + timedelta(1)
-except:
-    parser.error(" --begin_date and --end_date should be YYYY-MM-DD")
-    sys.exit(2)
-
-
-MIN_TIMESTAMP = datetime.timestamp(min_date) 
-MAX_TIMESTAMP = datetime.timestamp(max_date)
+MIN_TIMESTAMP, MAX_TIMESTAMP = utils.process_date_options(parser, options)
 PORTFOLIO_PERCENTAGE = options.bet_percentage
 PORTFOLIO_INITIAL_AMOUNT = options.wallet_initial
 MAXIMUM_BET = options.bet_max_bnb
@@ -130,7 +114,7 @@ for p_round in round_data:
             'bet' : bet_amount,
             'status' : 'won' if won_bet else 'lost',
             'earnings' : payout * bet_amount if won_bet else -bet_amount,
-            'payout' : round(1 + payout,2)
+            'payout' : payout
         }
         played_rounds.append(bet_info)
 

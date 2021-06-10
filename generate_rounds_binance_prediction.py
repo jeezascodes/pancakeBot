@@ -56,33 +56,6 @@ def get_binance_current_price():
     data = response.json()
     return data['price']
 
-def get_binance_price_for_timestamp(timestamp):
-
-     # Given a timestamp, we are going to look for the latest transaction
-     # before the timestamp, binance require the timestamps with milliseconds
-     # precission so we add three zeroes, one second before the timestamp should
-     # be enough, i am using 3 seconds just for precaution
-     end_timestamp_binance = int(timestamp) * 1000
-     start_timestamp_binace = end_timestamp_binance - 5000
-
-     endpoint = '/api/v3/aggTrades'
-     query_string = {
-        'symbol' : CURRENCY_SYMBOL,
-        'startTime': start_timestamp_binace,
-        'endTime': end_timestamp_binance,
-        'limit' : 1
-     }
-     
-     try: 
-        response = requests.get(BINANCE_API_URL+endpoint,params=query_string)
-        data = response.json()
-        if len(data) > 0:
-            return float(data[0]['p'])
-        else:
-            return -1
-     except Exception as e:
-         print(e)
-         sys.exit(2)   
 
 
 # Verify Parameters
@@ -139,7 +112,7 @@ for p_round in pancake_base_data:
         chainlink_timestamp = nearest_timestamp(chainlink_dict,before_lock_timestamp)
         if chainlink_timestamp > 0:
             chainlink_price =  chainlink_dict[chainlink_timestamp]
-            binance_price = float(get_binance_price_for_timestamp(before_lock_timestamp))
+            binance_price = float(utils.get_binance_price_for_timestamp(before_lock_timestamp))
             lock_price = float(p_round['lockPrice'])
             p_round['chainlink_price_age'] = before_lock_timestamp - int(chainlink_timestamp)
             p_round['chainlink_price'] = chainlink_price

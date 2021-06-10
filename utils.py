@@ -7,6 +7,7 @@ import os
 from csv import DictWriter
 from constants import wallet, network_provider, chainlink_addres
 import sys
+import statistics
 
 web3 = Web3(Web3.HTTPProvider(network_provider))
 
@@ -17,6 +18,106 @@ def get_binance_last_price():
     # FALTA VALIDAR PEO DEL WEIGHT Y LOS LIMITES
     data = response.json()
     return float(data['price'])
+
+def get_binance_price_for_timestamp(timestamp):
+
+     # Given a timestamp, we are going to look for the latest transaction
+     # before the timestamp, binance require the timestamps with milliseconds
+     # precission so we add three zeroes, one second before the timestamp should
+     # be enough, i am using 5 seconds just for precaution
+     end_timestamp_binance = int(timestamp) * 1000
+     start_timestamp_binace = end_timestamp_binance - 5000
+
+     url = 'https://api.binance.com/api/v3/aggTrades'
+     query_string = {
+        'symbol' : 'BNBUSDT',
+        'startTime': start_timestamp_binace,
+        'endTime': end_timestamp_binance,
+        'limit' : 1
+     }
+     
+     try: 
+        response = requests.get(url,params=query_string)
+        data = response.json()
+        if len(data) > 0:
+            return float(data[0]['p'])
+        else:
+            return -1
+     except Exception as e:
+         print(e)
+         sys.exit(2)   
+
+
+def calculate_metrics_for_array(data):
+
+    try:
+        min_value = min(data)
+        max_value = max(data)
+        
+        return {
+            'stdev': statistics.stdev(data),
+            'mean': statistics.mean(data),
+            'min': min(data),
+            'max': max(data),
+            'price_variation': (max_value - min_value) / min_value, 
+            'open': data[-1],
+            'close': data[0]
+        }
+
+    except Exception as e:
+        print(e)
+        print("problem here")
+        return {
+            'stdev': 0,
+            'mean': 0,
+            'min': 0,
+            'max': 0,
+            'price_variation': 0  ,
+            'open': 0,
+            'close': 0
+        }
+        
+
+
+def get_binance_minute_data_for_timestamp(timestamp):
+
+     # Given a timestamp, we are going to look for the latest transaction
+     # before the timestamp, binance require the timestamps with milliseconds
+     # precission so we add three zeroes
+     end_timestamp_binance = int(timestamp) * 1000
+     start_timestamp_binace = end_timestamp_binance - 60000
+     result = []
+
+     url = 'https://api.binance.com/api/v3/aggTrades'
+     query_string = {
+        'symbol' : 'BNBUSDT',
+        'startTime': start_timestamp_binace,
+        'endTime': end_timestamp_binance,
+        'limit' : 1000
+     }
+     
+     try: 
+        
+        fetched_elements = 0
+        need_extra_request = True
+        while need_extra_request:
+
+            response = requests.get(url,params=query_string)
+            data = response.json()
+            data.reverse()
+            result += [{'price': el['p'], 'timestamp': el['T']} for el in data]
+            
+            fetched_elements += len(data)
+            need_extra_request = 1000 == len(data)
+            if need_extra_request:
+                query_string['endTime'] = int(data[-1]['T'])-1
+            
+        return result
+
+     except Exception as e:
+         print(e)
+         sys.exit(2)   
+
 
 
 def get_chainlink_last_round_price():
@@ -112,7 +213,6 @@ def get_rounds_from_pancake_using_range(min_t, max_t, step=1000):
     need_extra_request = True
     while need_extra_request:
 
-        new_elements = 0
         response = run_query(query.format(
             quantity=step,
             skip=fetched_elements,
@@ -243,30 +343,6 @@ def add_date_options_to_parser(parser):
                     help="begin timestamp (overrides begin_date)")
     parser.add_option("--end_timestamp", dest="end_timestamp", 
                     help="end timestamp (overrides end_date)")
-
-
-def get_trend(numbers):
-    rows = []
-    total_numbers = len(numbers)
-    currentValueNumber = 1
-    n = 0
-    while n < len(numbers):
-        rows.append({'row': currentValueNumber, 'number': numbers[n]})
-        currentValueNumber += 1
-        n += 1
-    sumLines = 0
-    sumNumbers = 0
-    sumMix = 0
-    squareOfs = 0
-    for k in rows:
-        sumLines += k['row']
-        sumNumbers += k['number']
-        sumMix += k['row']*k['number']
-        squareOfs += k['row'] ** 2
-    a = (total_numbers * sumMix) - (sumLines * sumNumbers)
-    b = (total_numbers * squareOfs) - (sumLines ** 2)
-    c = a/b
-    return c
 
 
 # def get_pending_transactions():
