@@ -15,7 +15,7 @@ web3 = Web3(Web3.HTTPProvider(network_provider))
 
 minBet = 100000000000000000
 baseUnit = 1000000000000000000
-bnbRisk = 1
+bnbRisk = 1.2
 
 betPercent = 0.2
 
@@ -27,7 +27,7 @@ begin_time = datetime.datetime.now()
 def calculate_bet():
     balance = web3.eth.getBalance(wallet)
     if balance * betPercent >= baseUnit * bnbRisk:
-        return baseUnit * bnbRisk
+        return int(baseUnit * bnbRisk)
     else:
         return int(balance * betPercent)
 
