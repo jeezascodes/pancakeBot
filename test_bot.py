@@ -15,7 +15,7 @@ web3 = Web3(Web3.HTTPProvider(network_provider))
 
 minBet = 100000000000000000
 baseUnit = 1000000000000000000
-bnbRisk = 1.2
+bnbRisk = 1.5
 
 betPercent = 0.2
 
