@@ -109,6 +109,7 @@ while True:
 
         else:
            
+            price_diference_to_enter=PRICE_MINIMUM_DIFFERENCE
             
             csv_row = {
                 'round_id':current_active_round_id,
