@@ -61,6 +61,7 @@ def claim_winnings(ROUND_ID):
     if contractPancake.functions.claimable(ROUND_ID, wallet).call():
         print(' claiming')
         nonce = web3.eth.getTransactionCount(wallet)
+        print('nonce:',nonce)
         transaction = contractPancake.functions.claim(ROUND_ID).buildTransaction({
             'gas': 160000,
             'chainId': 56,
@@ -73,6 +74,7 @@ def claim_winnings(ROUND_ID):
         resultTransanction = web3.eth.sendRawTransaction(
             signed_txn.rawTransaction)
         print(resultTransanction)
+        print('despues del claim')
 
     else:
         print('not claimable')

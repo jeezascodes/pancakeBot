@@ -11,7 +11,10 @@ from utils import get_claimable_rounds
 
 while True:
     claimable_rounds = get_claimable_rounds()
+    print(claimable_rounds)
     if len(claimable_rounds) > 0:
         for c_round in claimable_rounds:
             claim_winnings(int(c_round['round']['id']))
+            time.sleep(5)
+            
     time.sleep(30)
