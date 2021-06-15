@@ -17,6 +17,7 @@ while True:
             claim_winnings(int(c_round['round']['id']))
             time.sleep(20)
     elif len(claimable_rounds) == 1:
+        c_round=claimable_rounds[0]
         claim_winnings(int(c_round['round']['id']))
        
     time.sleep(30)
