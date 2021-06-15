@@ -14,10 +14,13 @@ web3 = Web3(Web3.HTTPProvider(network_provider))
 
 def get_binance_last_price():
     url = 'https://api.binance.com/api/v3/ticker/price'
-    response = requests.get(url, params={'symbol': 'BNBUSDT'})
-    # FALTA VALIDAR PEO DEL WEIGHT Y LOS LIMITES
-    data = response.json()
-    return float(data['price'])
+    try:
+        response = requests.get(url, params={'symbol': 'BNBUSDT'})
+        data = response.json()
+        return float(data['price'])
+    except Exception as e:
+        print(e)
+        return -1
 
 def get_binance_price_for_timestamp(timestamp):
 
@@ -132,13 +135,23 @@ def get_chainlink_last_round_price():
     )
     addr = chainlink_addres
     contract = web3.eth.contract(address=addr, abi=abi)
-    data = contract.functions.latestRoundData().call()
-    now = round(datetime.timestamp(datetime.now()), 0)
-    return {
-        'roundId': data[0],
-        'price': int(data[1]) / 10**8,
-        'age': now - int(data[2])
-    }
+    try:
+        data = contract.functions.latestRoundData().call()
+        now = round(datetime.timestamp(datetime.now()), 0)
+        return {
+            'roundId': data[0],
+            'price': int(data[1]) / 10**8,
+            'age': now - int(data[2])
+        }
+    except Exception as e:
+        print(e)
+        return {
+            'roundId': 0,
+            'price': 0,
+            'age': 100000
+        }  
+        
+    
 
 
 def run_query(query):
@@ -179,9 +192,14 @@ def get_pancake_last_rounds(first, skip):
         }}
     """
 
-    result = run_query(query.format(first=first, skip=skip))
-    return result['data']['rounds']
+    try:
+        result = run_query(query.format(first=first, skip=skip))
+        return result['data']['rounds']
+    except Exception as e:
+        print(e)
+        return []
 
+    
 
 def get_rounds_from_pancake_using_range(min_t, max_t, step=1000):
 

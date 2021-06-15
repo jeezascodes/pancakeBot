@@ -38,6 +38,11 @@ while True:
 
     if now >= should_close_at:
         result = utils.get_pancake_last_rounds(2, 0)
+        
+        if len(result) == 0:
+            print("At {} we didn't find rounds information".format(datetime.fromtimestamp(now)))
+            continue
+        
         live_round = result[1]
         starts_at = int(live_round['lockAt'])
         should_close_at = starts_at + ROUND_DURATION
@@ -55,11 +60,19 @@ while True:
     if current_active_round_id is None or current_active_round_id != live_round['id']:
 
         current_active_round_id = live_round['id']
+        next_round_id = int(current_active_round_id) + 1
         chainlink_price = utils.get_chainlink_last_round_price()
+        if chainlink_price['roundId'] == 0:
+            print("At {} we didn't find chainlink price information".format(datetime.fromtimestamp(now)))
+            continue
 
         if chainlink_price['age'] < CHAINLINK_MAXIMUM_AGE:
 
             binance_price = utils.get_binance_last_price()
+            if binance_price < 0:
+                print("At {} we didn't find binance price information".format(datetime.fromtimestamp(now)))
+                continue
+
             base_price_difference = abs(
                 binance_price - chainlink_price['price'])/chainlink_price['price']
 
@@ -72,13 +85,14 @@ while True:
             price_diference_to_enter=PRICE_MINIMUM_DIFFERENCE
 
             csv_row = {
-                'round_id':current_active_round_id,
+                'round_id':next_round_id,
                 "chainlink_price_age":chainlink_price['age'],
                 'binance_price':binance_price,
                 'chainlink_price':chainlink_price['price'],
                 'price_difference':base_price_difference,
                 'price_difference_toEnter':price_diference_to_enter,
                 'position': 'bear' if bool(binance_price < chainlink_price['price']) else 'bull',
+                'date_before_bet': datetime.timestamp(datetime.now())
                 
             }
 
@@ -91,7 +105,7 @@ while True:
                 #     place_bet(bool(binance_price >
                 #                    chainlink_price['price']))
                 # else:
-                place_bet(bool(binance_price < chainlink_price['price']))
+                #place_bet(bool(binance_price < chainlink_price['price']))
                 # llamar función de juan
                 
              
@@ -112,7 +126,7 @@ while True:
             price_diference_to_enter=PRICE_MINIMUM_DIFFERENCE
             
             csv_row = {
-                'round_id':current_active_round_id,
+                'round_id':next_round_id,
                 "chainlink_price_age":chainlink_price['age'],
                 'binance_price':'undefined',
                 'chainlink_price':'undefined',
@@ -120,7 +134,8 @@ while True:
                 'price_difference_toEnter':price_diference_to_enter,
                 'position': 'undefined',
                 'consecutives_bets':just_did_a_bet,
-                'decision':'chainlink_price_too_old'
+                'decision':'chainlink_price_too_old',
+                'date_before_bet': datetime.timestamp(datetime.now())
             }
 
 
