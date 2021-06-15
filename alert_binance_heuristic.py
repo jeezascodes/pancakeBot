@@ -84,19 +84,8 @@ while True:
             # )
 
             price_diference_to_enter=PRICE_MINIMUM_DIFFERENCE
-
-            csv_row = {
-                'round_id':next_round_id,
-                "chainlink_price_age":chainlink_price['age'],
-                'binance_price':binance_price,
-                'chainlink_price':chainlink_price['price'],
-                'price_difference':base_price_difference,
-                'price_difference_toEnter':price_diference_to_enter,
-                'position': 'bear' if bool(binance_price < chainlink_price['price']) else 'bull',
-                'date_before_bet': datetime.timestamp(datetime.now())
-                
-            }
-
+            decision=''
+            consecutives_bets=0
 
             if base_price_difference >= price_diference_to_enter:
                 just_did_a_bet = just_did_a_bet + 1
@@ -110,16 +99,34 @@ while True:
                 # llamar función de juan
                 
              
-                csv_row['consecutives_bets']=just_did_a_bet
-                csv_row['decision']='place_bet'
+                consecutives_bets=just_did_a_bet
+                decision='place_bet'
             else:
           
      
-                csv_row['consecutives_bets']=just_did_a_bet
-                csv_row['decision']='small_price_difference'
+                consecutives_bets=just_did_a_bet
+                decision='small_price_difference'
 
                 just_did_a_bet = 0
            
+
+            csv_row = {
+                'round_id':next_round_id,
+                "chainlink_price_age":chainlink_price['age'],
+                'binance_price':binance_price,
+                'chainlink_price':chainlink_price['price'],
+                'price_difference':base_price_difference,
+                'price_difference_toEnter':price_diference_to_enter,
+                'position': 'bear' if bool(binance_price < chainlink_price['price']) else 'bull',
+                'consecutives_bets':consecutives_bets,
+                'decision':decision,
+                'date_before_bet': datetime.timestamp(datetime.now())
+                
+            }
+
+
+
+
             append_dict_as_row(csv_row)
 
         else:
