@@ -68,7 +68,8 @@ while True:
 
         if chainlink_price['age'] < CHAINLINK_MAXIMUM_AGE:
 
-            binance_price = utils.get_binance_last_price()
+            binance_price  = utils.get_binance_price_for_timestamp(should_bet_at)
+            #binance_price = utils.get_binance_last_price()
             if binance_price < 0:
                 print("At {} we didn't find binance price information".format(datetime.fromtimestamp(now)))
                 continue
@@ -105,7 +106,7 @@ while True:
                 #     place_bet(bool(binance_price >
                 #                    chainlink_price['price']))
                 # else:
-                #place_bet(bool(binance_price < chainlink_price['price']))
+                place_bet(bool(binance_price < chainlink_price['price']))
                 # llamar función de juan
                 
              

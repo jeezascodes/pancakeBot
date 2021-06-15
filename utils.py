@@ -48,7 +48,7 @@ def get_binance_price_for_timestamp(timestamp):
             return -1
      except Exception as e:
          print(e)
-         sys.exit(2)   
+         return -1
 
 
 def calculate_metrics_for_array(data):
