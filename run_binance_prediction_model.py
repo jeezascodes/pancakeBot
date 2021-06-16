@@ -8,6 +8,7 @@ import time
 from optparse import OptionParser
 import utils
 
+
     
 def load_data_from_csv(file, min_t, max_t):
     result = []
@@ -49,16 +50,28 @@ parser.add_option("--bet_percentage",
                   type="float",
                   help="percentage of portfolio that will be used in any bet",
                   default=0.2)
-parser.add_option("--difference_percentage",
-                  dest="difference_percentage",
+parser.add_option("--min_difference_percentage",
+                  dest="min_difference_percentage",
                   type="float",
-                  help="minimal difference between binance and chainlink to enter in a bet",
-                  default=0.00350240113364098)
+                  help="minimal difference between binance and chainlink to enter in a bet")
+parser.add_option("--max_difference_percentage",
+                  dest="max_difference_percentage",
+                  type="float",
+                  help="maximal difference between binance and chainlink to enter in a bet",
+                  default=0.00171115983509094)
 parser.add_option("--chainlink_age",
                   dest="chainlink_age",
                   type="int",
                   help="maximal age (seconds) for a chainlink price to enter in a bet",
                   default=70)
+parser.add_option("--spearman_min",
+                  dest="spearman_min",
+                  type="float",
+                  help="minimum spearm coefficient to be accepted")
+parser.add_option("--follow_public",
+                  dest="follow_public",
+                  action="store_true",
+                  help="use public proxy to filtrate")                  
 parser.add_option("--consecutive_errors",
                   dest="consecutive_errors",
                   type="int",
@@ -73,11 +86,12 @@ MIN_TIMESTAMP, MAX_TIMESTAMP = utils.process_date_options(parser, options)
 PORTFOLIO_PERCENTAGE = options.bet_percentage
 PORTFOLIO_INITIAL_AMOUNT = options.wallet_initial
 MAXIMUM_BET = options.bet_max_bnb
-DIFFERENCE_MINIMUM = options.difference_percentage
 MAXIMUM_AGE = options.chainlink_age
 FAILURE_MAXIMUM = options.consecutive_errors
 ORIGIN_CSV_FILE = options.input_file
 OUTPUT_CSV_FILE = options.output_file
+
+
 
 
 failure_log = []
@@ -86,16 +100,40 @@ round_data = load_data_from_csv(ORIGIN_CSV_FILE,MIN_TIMESTAMP,MAX_TIMESTAMP)
 portfolio_total = PORTFOLIO_INITIAL_AMOUNT
 consecutive_errors = []
 
+
 for p_round in round_data:
 
     if p_round['chainlink_price'] == 'N/A':
         continue
     
+
     binance_difference = float(p_round['binance_difference'])
     chainlink_price_age = int(p_round['chainlink_price_age'])
+    
+    public_is_ok = True
+    if options.follow_public:
+        public_position = 'Bear' if float(p_round['lock_bear_amount']) >= float(p_round['lock_bull_amount']) else 'Bull'
+        public_is_ok = public_position == p_round['binance_position']
 
-    # If this happens, we bet on the round
-    if binance_difference >= DIFFERENCE_MINIMUM and chainlink_price_age < MAXIMUM_AGE:
+    difference_is_ok = binance_difference >= options.max_difference_percentage
+    if not options.min_difference_percentage is None :
+        minimum = options.min_difference_percentage
+        maximum = options.max_difference_percentage
+        difference_is_ok = minimum <= binance_difference < maximum
+
+    spearman_is_ok = True
+    if not options.spearman_min is None:
+        round_spearman = float(p_round['spearman_coefficient'])
+        spearman_is_ok = (
+            (p_round['binance_position'] == 'Bear' and round_spearman <= -1*options.spearman_min) or 
+            (p_round['binance_position'] == 'Bull' and round_spearman >= options.spearman_min)
+        )
+    
+    age_is_ok = chainlink_price_age <= MAXIMUM_AGE
+
+    
+    
+    if public_is_ok and difference_is_ok and spearman_is_ok and age_is_ok: 
 
 
         bet_amount = portfolio_total * PORTFOLIO_PERCENTAGE
@@ -103,20 +141,24 @@ for p_round in round_data:
             bet_amount = MAXIMUM_BET
 
         won_bet = p_round['binance_position'] == p_round['position']
-        payout = 0
+        bull = float(p_round['bullAmount']) + (bet_amount if p_round['binance_position'] == "Bull" else 0)
+        bear = float(p_round['bearAmount']) + (bet_amount if p_round['binance_position'] == "Bear" else 0)
         if p_round['position'] == 'Bull':
-            payout = (float(p_round['bearAmount'])/float(p_round['bullAmount']))
+            payout = bear/bull
         else:
-            payout = (float(p_round['bullAmount'])/float(p_round['bearAmount']))
+            payout = bull/bear
 
         bet_info = {
             'id': p_round['id'],
+            'lock_date' : datetime.fromtimestamp(int(p_round['lockAt'])).strftime('%Y-%m-%d %H:%M:%S'),
             'bet' : bet_amount,
             'status' : 'won' if won_bet else 'lost',
             'earnings' : payout * bet_amount if won_bet else -bet_amount,
             'winning_payout' : payout,
-            'bet_position': p_round['binance_position']
+            'bet_position': p_round['binance_position'],
+            'price_diffence': binance_difference,
         }
+        
         played_rounds.append(bet_info)
 
         if won_bet:
@@ -125,6 +167,7 @@ for p_round in round_data:
         else:
             portfolio_total -= bet_amount
             consecutive_errors.append(p_round['id'])
+        
         bet_info['wallet_balance'] = portfolio_total
 
         if len(consecutive_errors) == FAILURE_MAXIMUM:
@@ -134,9 +177,13 @@ for p_round in round_data:
 
 won = len(list(filter(lambda x: x['status'] == 'won', played_rounds)))
 lost = len(played_rounds) - won
+average_payout = numpy.mean([x['winning_payout'] for x in played_rounds])
+print(len([x['winning_payout'] for x in played_rounds]))
+print(len(played_rounds))
 print("Portfolio Status: Started With {} BNB - Ended with {} BNB".format(PORTFOLIO_INITIAL_AMOUNT,portfolio_total))
 print("Won {} rounds and, lost {} rounds".format(won,lost))
 print("Success rate: {}%".format(round((won / len(played_rounds))* 100,2)))
+print("Payout average: {}%".format(round(average_payout*100,2)))
 print("Lost {} consecutive bets {} times".format(FAILURE_MAXIMUM,len(failure_log)))
 
 # writing the data into the file

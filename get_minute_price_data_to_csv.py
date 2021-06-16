@@ -38,19 +38,26 @@ if append_write == 'w':
 total_minutes = (MAX_TIMESTAMP - MIN_TIMESTAMP) / 60
 current_minute = MIN_TIMESTAMP + 60
 counter = 0
+unwritten_results = []
 while current_minute < MAX_TIMESTAMP:
 
     if current_minute > options.start_from_timestamp:
         data = utils.get_binance_minute_data_for_timestamp(current_minute)
         result = utils.calculate_metrics_for_array([float(elem['price']) for elem in data])
         result['timestamp'] = current_minute
-        if result['mean'] != 0:
-            writer.writerow(result)
-        time.sleep(0.1)
+        if result['mean'] != 0 and counter % 10 == 0 and counter != 0:
+            writer.writerows(unwritten_results)
+            unwritten_results = []
+        elif result['mean'] != 0:
+            unwritten_results.append(result)
     
     counter += 1
     current_minute += 60
     
     if counter % 10 == 0:
         print("processed: {} of {}".format(counter, total_minutes))
+
+if len(unwritten_results) > 0:
+    writer.writerows(unwritten_results)
+    unwritten_results = []
 

@@ -5,11 +5,13 @@ from web3 import Web3
 import requests
 import os
 from csv import DictWriter
-from constants import wallet, network_provider, chainlink_addres
+from constants import (
+    network_provider,
+    chainlink_address
+)
 import sys
 import statistics
-
-web3 = Web3(Web3.HTTPProvider(network_provider))
+import scipy.stats
 
 
 def get_binance_last_price():
@@ -21,6 +23,38 @@ def get_binance_last_price():
     except Exception as e:
         print(e)
         return -1
+
+
+def calculate_bet_difference_from_volatitly(price_stdev_percentage, aggresive_diff, middle_diff, conservative_diff):
+
+    # This calculations were created using the data from 03/06/2021 to 08/06/2021
+    #
+    #  MIN          0.000047450425045
+    #  P0           0.000274273396124
+    #  P1           0.000354791285285
+    #  P2           0.000419999056739
+    #  P3           0.000494032674363
+    #  P4           0.000573124868205
+    #  P5           0.000667372998241
+    #  P6           0.000780954449481
+    #  P7           0.000947973935181
+    #  P8           0.001240594065159
+    #  MAX (P9)     0.008617263673595
+
+    P9_MIN = 0.001240594065159
+    P8_MIN = 0.000947973935181
+
+    
+    if price_stdev_percentage <= P8_MIN:
+        return aggresive_diff
+    elif P8_MIN < price_stdev_percentage <= P9_MIN:
+        return middle_diff
+    else:
+        return conservative_diff
+
+
+
+
 
 def get_binance_price_for_timestamp(timestamp):
 
@@ -63,6 +97,7 @@ def calculate_metrics_for_array(data):
             'min': min(data),
             'max': max(data),
             'price_variation': (max_value - min_value) / min_value, 
+            'median': statistics.median(data),
             'open': data[-1],
             'close': data[0]
         }
@@ -75,7 +110,8 @@ def calculate_metrics_for_array(data):
             'mean': 0,
             'min': 0,
             'max': 0,
-            'price_variation': 0  ,
+            'price_variation': 0,
+            'median': 0,
             'open': 0,
             'close': 0
         }
@@ -119,7 +155,8 @@ def get_binance_minute_data_for_timestamp(timestamp):
 
      except Exception as e:
          print(e)
-         sys.exit(2)   
+         return []
+
 
 
 
@@ -133,7 +170,7 @@ def get_chainlink_last_round_price():
         '{"inputs":[],"name":"latestRoundData","outputs":[{"internalType":"uint80","name":"roundId","type":"uint80"},{"internalType":"int256","name":"answer","type":"int256"},{"internalType":"uint256","name":"startedAt","type":"uint256"},{"internalType":"uint256","name":"updatedAt","type":"uint256"},{"internalType":"uint80","name":"answeredInRound","type":"uint80"}],"stateMutability":"view","type":"function"},'
         '{"inputs":[],"name":"version","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]'
     )
-    addr = chainlink_addres
+    addr = chainlink_address
     contract = web3.eth.contract(address=addr, abi=abi)
     try:
         data = contract.functions.latestRoundData().call()
@@ -201,6 +238,65 @@ def get_pancake_last_rounds(first, skip):
 
     
 
+# Este query dejara de funcionar si el mercado c
+def get_round_bets_at_timestamp(round_number, timestamp):
+
+    bets = []
+    result = {
+        'bearAmount' : 0,
+        'bearBets' : 0,
+        'bullAmount' : 0,
+        'bullBets' : 0,
+        'totalAmount' : 0,
+        'totalBets' : 0,
+    }
+    query = """
+        query{{
+            bets(first: {quantity}, skip: {skip}, where: {{round: "{round}", createdAt_lte: {timestamp} }})
+            {{
+                amount
+                position
+                createdAt
+                updatedAt
+            }}
+        }}
+    """
+
+    fetched_elements = 0
+    need_extra_request = True
+    while need_extra_request:
+
+        response = run_query(query.format(
+            quantity=1000,
+            skip=fetched_elements,
+            round=round_number,
+            timestamp=timestamp
+            )
+        )
+
+        bets += response['data']['bets']
+        fetched_elements += len(response['data']['bets'])
+        need_extra_request = 1000 == len(response['data']['bets'])
+
+    for bet in bets:
+
+        if bet['position'] == "Bear":
+            result['bearAmount'] += float(bet['amount'])
+            result['bearBets'] += 1
+        else:
+            result['bullAmount'] += float(bet['amount'])
+            result['bullBets'] += 1
+        
+        result['totalAmount'] += float(bet['amount'])
+        result['totalBets'] += 1
+
+    return result
+
+
+    
+
+
+
 def get_rounds_from_pancake_using_range(min_t, max_t, step=1000):
 
     ROUND_FIELDS = [
@@ -251,7 +347,8 @@ def get_rounds_from_pancake_using_range(min_t, max_t, step=1000):
     return result
 
 
-def get_claimable_rounds():
+def get_claimable_rounds(wallet):
+
     query = """query{{
             users(where: {{address: "{currentWallet}"}}){{
             id
@@ -267,18 +364,21 @@ def get_claimable_rounds():
             }}
             }}""".format(currentWallet=wallet)
 
-    result = run_query(query)
+    try:
+        result = run_query(query)
 
-    if len(result['data']['users']) < 1:
+        if len(result['data']['users']) < 1:
+            return []
+        else:
+            bets = result['data']['users'][0]['bets']
+            filterd_bets = list(
+                filter(lambda x: x['position'] == x['round']['position'], bets))
+            return filterd_bets
+    except Exception as e:
+        print(e)
         return []
-    else:
-        bets = result['data']['users'][0]['bets']
-        filterd_bets = list(
-            filter(lambda x: x['position'] == x['round']['position'], bets))
-        return filterd_bets
 
-
-def get_if_user_has_open_bet():
+def get_if_user_has_open_bet(wallet):
     query = """query{{
             users(where: {{address: "{currentWallet}"}}){{
             id
@@ -301,13 +401,6 @@ def get_if_user_has_open_bet():
     else:
         bets = result['data']['users'][0]['bets']
         return not bool(bets[0]['round']['position'])
-
-
-def get_wallet_balance(wallet):
-    try:
-        return web3.eth.getBalance(wallet)
-    except:
-        print('got error from web3 try again')
 
 
 
@@ -363,20 +456,17 @@ def add_date_options_to_parser(parser):
                     help="end timestamp (overrides end_date)")
 
 
-# def get_pending_transactions():
-#     web3.eth.filter('pending')
-def append_dict_as_row(dict_of_elem,file_name=wallet[0:8]+'_result.csv'):
-    # el nombre del archivo de salida son las primeros 8 caracteres del wallet
-    # mas result.csv
+def append_dict_as_row(dict_of_elem,wallet):
+    csv_name = wallet[0:8]+'_result.csv'
 
-    if os.path.exists(file_name):
+    if os.path.exists(csv_name):
         append_write = 'a' # append if already exists
     else:
         append_write = 'w' # make a new file if not
        
     # Open file in append mode
     field_names=dict_of_elem.keys()
-    with open(file_name, append_write, newline='') as write_obj:
+    with open(csv_name, append_write, newline='') as write_obj:
         # Create a writer object from csv module
         dict_writer = DictWriter(write_obj, fieldnames=field_names)
         # Add dictionary as wor in the csv
@@ -384,3 +474,71 @@ def append_dict_as_row(dict_of_elem,file_name=wallet[0:8]+'_result.csv'):
             dict_writer.writeheader()
 
         dict_writer.writerow(dict_of_elem)
+
+
+def calculate_data_direction(data):
+
+    ordered_data = sorted(data, key = lambda k: int(k['timestamp']))
+    x_axis = [int(el['timestamp']) for el in ordered_data]
+    y_axis = [float(el['price']) for el in ordered_data]
+    #correlation, p_value = scipy.stats.spearmanr(x_axis,y_axis)
+
+    # I will use values greater than equal to 0.6 to consider something
+    # important enough
+
+    return scipy.stats.spearmanr(x_axis,y_axis)
+
+
+# In case we need to do tests, this is the minimum bet that can be placed
+# minBet = 100000000000000000
+
+def calculate_bet(wallet, web3_connection, max_bnb, max_percentage):
+    baseUnit = 1000000000000000000
+    balance = web3_connection.eth.getBalance(wallet)
+    if balance * max_percentage >= baseUnit * max_bnb:
+        return int(baseUnit * max_bnb)
+    else:
+        return int(balance * max_percentage)
+
+
+def place_bet(is_bear,wallet,private_key,web3_connection, contract, max_bnb, max_percentage):
+    nonce = web3_connection.eth.getTransactionCount(wallet)
+    print('placing bet ', ['bear' if is_bear else 'bull'])
+    bet_config = {
+        'gas': 160000,
+        'chainId': 56,
+        'from': wallet,
+        'nonce': nonce,
+        'value': calculate_bet(wallet,web3_connection,max_bnb,max_percentage)
+    }
+    if not is_bear:
+        transaction = contract.functions.betBull().buildTransaction(bet_config)
+    else:
+        transaction = contract.functions.betBear().buildTransaction(bet_config)
+
+    signed_txn = web3_connection.eth.account.signTransaction(
+        transaction, private_key=private_key)
+    resultTransanction = web3_connection.eth.sendRawTransaction(signed_txn.rawTransaction)
+    print(resultTransanction)
+
+
+def claim_winnings(round_id, wallet, private_key, web3_connection, contract):
+    if contract.functions.claimable(round_id, wallet).call():
+        print(' claiming')
+        nonce = web3_connection.eth.getTransactionCount(wallet)
+        print('nonce:',nonce)
+        transaction = contract.functions.claim(round_id).buildTransaction({
+            'gas': 160000,
+            'chainId': 56,
+            'from': wallet,
+            'nonce': nonce,
+        })
+
+        signed_txn = web3_connection.eth.account.signTransaction(
+            transaction, private_key=private_key)
+        resultTransanction = web3_connection.eth.sendRawTransaction(
+            signed_txn.rawTransaction)
+        print(resultTransanction)
+        print('despues del claim')
+    else:
+        print('not claimable')

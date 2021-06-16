@@ -127,7 +127,7 @@ for p_round in pancake_base_data:
             p_round['binance_price'] = 'N/A'
             p_round['binance_difference'] = 'N/A'
             p_round['binance_position'] = 'N/A'
-            p_rouud['before_lock_window'] = 0
+            p_round['before_lock_window'] = 0
     
         writer.writerow(p_round)
     
