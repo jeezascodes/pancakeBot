@@ -175,13 +175,12 @@ for p_round in round_data:
             consecutive_errors = []
 
 
-won = len(list(filter(lambda x: x['status'] == 'won', played_rounds)))
+won_rounds = list(filter(lambda x: x['status'] == 'won', played_rounds))
+won = len(won_rounds)
 lost = len(played_rounds) - won
-average_payout = numpy.mean([x['winning_payout'] for x in played_rounds])
-print(len([x['winning_payout'] for x in played_rounds]))
-print(len(played_rounds))
+average_payout = numpy.mean([x['winning_payout'] for x in won_rounds])
 print("Portfolio Status: Started With {} BNB - Ended with {} BNB".format(PORTFOLIO_INITIAL_AMOUNT,portfolio_total))
-print("Won {} rounds and, lost {} rounds".format(won,lost))
+print("Played: {}, Won: {}, Lost: {} ".format(len(played_rounds),won,lost))
 print("Success rate: {}%".format(round((won / len(played_rounds))* 100,2)))
 print("Payout average: {}%".format(round(average_payout*100,2)))
 print("Lost {} consecutive bets {} times".format(FAILURE_MAXIMUM,len(failure_log)))
