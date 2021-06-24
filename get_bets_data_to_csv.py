@@ -17,12 +17,12 @@ def run_query(query):
 
 
 
-def get_bets_from_pancake(min_t, max_t, wallet, step=1000):
+def get_bets_from_pancake(min_t, max_t, wallets, step=1000):
 
     result = []
     query = """
        query{{
-        users(where: {{address: "{wallet}"}}){{
+        users(where: {{address_in: {wallets} }}){{
             id
             address
             createdAt
@@ -45,6 +45,7 @@ def get_bets_from_pancake(min_t, max_t, wallet, step=1000):
                     bullAmount
                     bearBets
                     bearAmount
+                    lockAt
                 }}
             }}
         }}
@@ -57,36 +58,37 @@ def get_bets_from_pancake(min_t, max_t, wallet, step=1000):
     while need_extra_request:
 
         new_elements = 0
-        response = run_query(query.format(
+        real_query = query.format(
             quantity=step,
             skip=fetched_elements,
             min_date=min_t,
             max_date=max_t,
-            wallet=wallet
+            wallets=str(wallets).replace("'",'"')
             )
-        )
+        response = run_query(real_query)
 
-        bets = response['data']['users'][0]['bets']
-
-        for bet in bets:
-            new_element = copy.deepcopy(bet)
-            new_element['round_id']= new_element['round']['id']
-            new_element['round_position'] = new_element['round']['position']
-            new_element['round_totalBets'] = new_element['round']['totalBets']
-            new_element['round_totalAmount'] = new_element['round']['totalAmount']
-            new_element['round_bullBets'] = new_element['round']['bullBets']
-            new_element['round_bullAmount'] = new_element['round']['bullAmount']
-            new_element['round_bearBets'] = new_element['round']['bearBets']
-            new_element['round_bearAmount'] = new_element['round']['bearAmount']
-            new_element.pop('round',None)
-            result.append(new_element)
-            
-
-        # If there where less than 'step' elements, there is no
-        # need to do more requests, else do new request skipping already
-        # fetched elements
-        fetched_elements += len(bets)
-        need_extra_request = step == len(bets)
+        
+        users = response['data']['users']
+        for user in users:
+            bets = user['bets']
+            for bet in bets:
+                new_element = copy.deepcopy(bet)
+                new_element['round_id']= new_element['round']['id']
+                new_element['round_position'] = new_element['round']['position']
+                new_element['round_totalBets'] = new_element['round']['totalBets']
+                new_element['round_totalAmount'] = new_element['round']['totalAmount']
+                new_element['round_bullBets'] = new_element['round']['bullBets']
+                new_element['round_bullAmount'] = new_element['round']['bullAmount']
+                new_element['round_bearBets'] = new_element['round']['bearBets']
+                new_element['round_bearAmount'] = new_element['round']['bearAmount']
+                new_element['round_lockAt'] = new_element['round']['lockAt']
+                new_element['wallet_id'] = user['address']
+                new_element.pop('round',None)
+                result.append(new_element)
+                
+            need_extra_request = step == len(bets)
+            if need_extra_request:
+                print("esto se jodio")
     
     return result
 
@@ -108,7 +110,9 @@ parser.add_option("--output_file",
 MIN_TIMESTAMP, MAX_TIMESTAMP = utils.process_date_options(parser, options)
 FILE = options.output_file
 
-collected_data = get_bets_from_pancake(MIN_TIMESTAMP,MAX_TIMESTAMP,options.wallet_id)
+wallets = options.wallet_id.split(',')
+
+collected_data = get_bets_from_pancake(MIN_TIMESTAMP,MAX_TIMESTAMP,wallets)
 
 # writing the data into the file
 if len(collected_data) > 0:
