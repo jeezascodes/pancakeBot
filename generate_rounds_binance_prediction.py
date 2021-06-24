@@ -91,7 +91,32 @@ RESULT_FILE = options.output_file
 BINANCE_API_URL = 'https://api.binance.com'
 CURRENCY_SYMBOL = 'BNBUSDT'
 TIME_WINDOW = options.time_before_lock
-FIELDS = ['id','position','startAt','startBlock','startHash','lockAt','lockBlock','lockHash','lockPrice','endAt','endBlock','endHash','closePrice','totalBets','totalAmount','bullBets','bullAmount','bearBets','bearAmount','before_lock_window','chainlink_price_age','chainlink_price','binance_price','binance_difference','binance_position']
+FIELDS = ['id','position','startAt','startBlock','startHash','lockAt',
+         'lockBlock','lockHash','lockPrice','endAt','endBlock','endHash',
+         'closePrice','totalBets','totalAmount','bullBets','bullAmount',
+         'bearBets','bearAmount','before_lock_window','chainlink_price_age',
+         'chainlink_price','binance_price','binance_difference','binance_position']
+
+# All these fields are calculated at the before_lock timestamp
+EXTRA_FIELDS = [
+    'spearman_coefficient', # Spearman for the timestamps and the prices of a minute of data
+    'last_minute_average_difference', # Average of the last minute divided between the chainlink price
+    'last_minute_median_difference', # Median of the last minute divided between the chainlink price
+    'last_minute_average_position', # Position according to average
+    'last_minute_median_position', # Position according to median
+    'last_minute_min',
+    'last_minute_max',
+    'last_minute_average_difference', # Average of the last minute divided between the chainlink price
+    'last_minute_median_difference', # Median of the last minute divided between the chainlink price
+    'lock_bear_amount', # Bear amount of the round at before_lock timestamp
+    'lock_bear_bets',
+    'lock_bull_amount',
+    'lock_bull_bets',
+    'lock_total_bets',
+    'lock_total_amount'
+]
+
+FIELDS += EXTRA_FIELDS
 
 pancake_base_data = utils.get_rounds_from_pancake_using_range(MIN_TIMESTAMP,MAX_TIMESTAMP)
 chainlink_dict = load_chainlink_timestamps_from_csv(CHAINLINK_ORIGIN_CSV_FILE,MIN_TIMESTAMP,MAX_TIMESTAMP)
@@ -112,15 +137,33 @@ for p_round in pancake_base_data:
         chainlink_timestamp = nearest_timestamp(chainlink_dict,before_lock_timestamp)
         if chainlink_timestamp > 0:
             chainlink_price =  chainlink_dict[chainlink_timestamp]
-            binance_price = float(utils.get_binance_price_for_timestamp(before_lock_timestamp))
-            lock_price = float(p_round['lockPrice'])
+
+            minute_data = utils.get_binance_minute_data_for_timestamp(before_lock_timestamp)
+            minute_metrics = utils.calculate_metrics_for_array([float(elem['price']) for elem in minute_data])
+            binance_price = minute_metrics['close']
+            direction_data = utils.calculate_data_direction(minute_data)
+            spearman, _  = direction_data['spearman']
+            bets_result = utils.get_round_bets_at_timestamp(p_round['id'], before_lock_timestamp)
+            
             p_round['chainlink_price_age'] = before_lock_timestamp - int(chainlink_timestamp)
             p_round['chainlink_price'] = chainlink_price
             p_round['binance_price'] = binance_price
             p_round['binance_difference'] = abs(binance_price - chainlink_price)/chainlink_price
             p_round['binance_position'] = 'Bull' if binance_price > chainlink_price else 'Bear'
             p_round['before_lock_window'] = before_lock_timestamp
-            time.sleep(0.1)
+            p_round['spearman_coefficient'] = spearman
+            p_round['last_minute_average_difference'] = abs(minute_metrics['mean'] - chainlink_price)/chainlink_price
+            p_round['last_minute_median_difference'] = abs(minute_metrics['median'] - chainlink_price)/chainlink_price
+            p_round['last_minute_average_position'] = 'Bull' if minute_metrics['mean'] > chainlink_price else 'Bear'
+            p_round['last_minute_median_position'] = 'Bull' if minute_metrics['median'] > chainlink_price else 'Bear'
+            p_round['last_minute_min'] = minute_metrics['min']
+            p_round['last_minute_max'] = minute_metrics['max']
+            p_round['lock_bear_amount'] = bets_result['bearAmount']
+            p_round['lock_bear_bets'] = bets_result['bearBets']
+            p_round['lock_bull_amount'] = bets_result['bullAmount']
+            p_round['lock_bull_bets'] = bets_result['bullBets']
+            p_round['lock_total_amount'] = bets_result['totalAmount']
+            p_round['lock_total_bets'] = bets_result['totalBets']
         else:
             p_round['chainlink_price_age'] = 'N/A'
             p_round['chainlink_price'] = 'N/A'
@@ -128,6 +171,19 @@ for p_round in pancake_base_data:
             p_round['binance_difference'] = 'N/A'
             p_round['binance_position'] = 'N/A'
             p_round['before_lock_window'] = 0
+            p_round['spearman_coefficient'] = 'N/A'
+            p_round['last_minute_average_difference'] = 'N/A'
+            p_round['last_minute_median_difference'] = 'N/A'
+            p_round['last_minute_average_position'] = 'N/A'
+            p_round['last_minute_median_position'] = 'N/A'
+            p_round['last_minute_min'] = 'N/A'
+            p_round['last_minute_max'] = 'N/A'
+            p_round['lock_bear_amount'] = 'N/A'
+            p_round['lock_bear_bets'] = 'N/A'
+            p_round['lock_bull_amount'] = 'N/A'
+            p_round['lock_bull_bets'] = 'N/A'
+            p_round['lock_total_amount'] = 'N/A'
+            p_round['lock_total_bets'] = 'N/A'
     
         writer.writerow(p_round)
     
