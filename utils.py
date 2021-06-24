@@ -208,7 +208,7 @@ def get_pancake_last_rounds(first, skip):
             rounds(
                 first: {first},
                 skip: {skip},
-                orderBy: epoch,
+                orderBy: startAt,
                 orderDirection: desc
             ){{
                 id
@@ -402,6 +402,18 @@ def get_if_user_has_open_bet(wallet):
         bets = result['data']['users'][0]['bets']
         return not bool(bets[0]['round']['position'])
 
+def date_to_timestamp(date_string, use_utc=True):
+
+    try:
+        result_date = datetime.strptime(date_string, '%Y-%m-%d')
+        if use_utc:
+            result_date = pytz.utc.localize(result_date)
+        
+        return int(datetime.timestamp(result_date))
+
+    except Exception as e:
+        print(e)
+        sys.exit(2)
 
 
 def process_date_options(parser,parse_options):
@@ -485,8 +497,18 @@ def calculate_data_direction(data):
 
     # I will use values greater than equal to 0.6 to consider something
     # important enough
-
-    return scipy.stats.spearmanr(x_axis,y_axis)
+    try: 
+        result = {
+            'spearman' : scipy.stats.spearmanr(x_axis,y_axis),
+            'pearson' : scipy.stats.pearsonr(x_axis,y_axis),
+        }
+        return result
+    except Exception as e:
+        print(e)
+        return {
+            'spearman' : [0,0],
+            'pearson' : [0,0]
+        }
 
 
 # In case we need to do tests, this is the minimum bet that can be placed

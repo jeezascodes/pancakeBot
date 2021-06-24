@@ -19,24 +19,48 @@ from constants import (
 from config import (
     seconds_before_lock,
     round_duration,
-    spearman_min_value,
+    spearman_value,
+    spearman_mode,
+    spearman_max_difference,
     min_percentage_difference,
     max_percentage_difference,
     chainlink_price_max_age,
     bot_max_bnb,
-    bot_max_percentage
+    bot_max_percentage,
+    failed_round_penalty,
+    maximum_consecutive_bets,
 )
 
 
+def check_spearman(spearman_coefficient, bet_is_bear, price_difference, spearman_mode, spearman_value, spearman_max_difference):
+
+    if not spearman_max_difference is None and price_difference > spearman_max_difference:
+        return True
+    
+    if spearman_mode == "conservative":
+        return (
+            (bet_is_bear and spearman_coefficient < spearman_value) or
+            (not bet_is_bear and spearman_coefficient > spearman_value * -1)
+        )
+    else:
+        return (
+            (bet_is_bear and spearman_coefficient <= spearman_value * -1) or
+            (not bet_is_bear and spearman_coefficient >= spearman_value)
+        )
+
+
 current_active_round_id = None
-result = utils.get_pancake_last_rounds(2, 0)
+result = utils.get_pancake_last_rounds(3, 0)
 live_round = result[1]
 starts_at = int(live_round['lockAt'])
 should_close_at = starts_at + round_duration
 should_bet_at = should_close_at - seconds_before_lock
 checked_claimed = False
 just_did_a_bet = 0
-
+last_bet_bear = False
+last_bet_id = None
+won_last_bet = True
+last_bet_difference = 0
 
 load_dotenv()
 WALLET = os.environ.get('WALLET')
@@ -49,11 +73,11 @@ if WALLET is None or PRIVATE_KEY is None:
 web3 = Web3(Web3.HTTPProvider(network_provider))
 contractPancake = web3.eth.contract(address=pancake_address, abi=abi_pancake)
 
-if max_percentage_difference is None:
-    print("Error: This bot needs at least the 'max_percentage_difference' variable in config to work")
+if min_percentage_difference is None:
+    print("Error: This bot needs at least the 'min_percentage_difference' variable in config to work")
     sys.exit(2)
 
-if not min_percentage_difference is None:
+if not max_percentage_difference is None:
     print(
         "Warning, this bot will bet on rounds using a difference from {} to {}".format(
             min_percentage_difference,
@@ -61,19 +85,32 @@ if not min_percentage_difference is None:
             )
     )
 
-if not spearman_min_value is None:
-    print("Warning, this bot will bet using a spearman coeffcient of {}".format(spearman_min_value))
+if not spearman_value is None:
+    if spearman_mode != 'conservative' and spearman_mode != 'aggressive':
+        print("Error: if spearman_value is defined, spearman_mode must be provided as aggressive or conservative")   
+        sys.exit(2) 
+    
+    print("Warning, this bot will bet using a spearman coeffcient of {} in {} mode".format(spearman_value, spearman_mode))
 
+if not spearman_max_difference is None:
+    print("Warning, this bot will bet applying spearman to bets betweeen {} and {}".format(min_percentage_difference, spearman_max_difference))
+
+if not maximum_consecutive_bets is None:
+    print("Warning, this bot will bet only for a maximum of {} consecutive rounds".format(maximum_consecutive_bets))
+
+if not failed_round_penalty is None:
+    print("Warning, this bot will apply an extra {} penalty on minimum percentage difference if the last round was lost".format(failed_round_penalty))  
 
 while True:
 
     now = round(datetime.timestamp(datetime.now()), 0)
 
     if now >= should_close_at:
-        result = utils.get_pancake_last_rounds(2, 0)
+        result = utils.get_pancake_last_rounds(3, 0)
         
         if len(result) == 0:
             print("At {} we didn't find rounds information".format(datetime.fromtimestamp(now)))
+            time.sleep(1)
             continue
         
         live_round = result[1]
@@ -92,14 +129,37 @@ while True:
 
     if current_active_round_id is None or current_active_round_id != live_round['id']:
 
+        last_closed_round = result[2]
+        # If i didnt validate the last bet when the round was live, because the chainlink price
+        # was too old, i validate if we won here
+        if int(last_closed_round['id']) == last_bet_id:
+            last_lock_price = float(last_closed_round['lockPrice'])
+            last_close_price = float(last_closed_round['closePrice'])
+            if last_bet_bear and last_lock_price > last_close_price:
+                won_last_bet = True
+            elif not last_bet_bear and last_lock_price < last_close_price:
+                won_last_bet = True
+            else:
+                won_last_bet = False
+
         current_active_round_id = live_round['id']
         next_round_id = int(current_active_round_id) + 1
         chainlink_price = utils.get_chainlink_last_round_price()
+        
         if chainlink_price['roundId'] == 0:
             print("At {} we didn't find chainlink price information".format(datetime.fromtimestamp(now)))
             continue
 
         if chainlink_price['age'] <= chainlink_price_max_age:
+            
+            # Checking if the last bet was won or lost
+            if just_did_a_bet > 0:
+                if last_bet_bear and chainlink_price['price'] < float(live_round['lockPrice']):
+                    won_last_bet = True
+                elif not last_bet_bear and chainlink_price['price'] > float(live_round['lockPrice']):
+                    won_last_bet = True
+                else:
+                    won_last_bet = False
 
             minute_data  = utils.get_binance_minute_data_for_timestamp(should_bet_at)
             
@@ -112,42 +172,65 @@ while True:
             base_price_difference = abs(
                 binance_price - chainlink_price['price'])/chainlink_price['price']
             decision=''
-            consecutives_bets=0
 
-            price_is_ok = base_price_difference >= max_percentage_difference
-            if not min_percentage_difference is None:
-                price_is_ok = min_percentage_difference <= base_price_difference < max_percentage_difference
+            real_minimum = min_percentage_difference
+            if not failed_round_penalty is None and not won_last_bet:
+                real_minimum = real_minimum + (failed_round_penalty * just_did_a_bet)
+
+            price_is_ok = base_price_difference >= real_minimum
+            
+            if not failed_round_penalty is None and not won_last_bet:
+                price_is_ok = price_is_ok and base_price_difference > last_bet_difference
+
+            if not max_percentage_difference is None:
+                price_is_ok = real_minimum <= base_price_difference < max_percentage_difference
 
             spearman_is_ok = True
-            if not spearman_min_value is None:
-                current_spearman, p_value = utils.calculate_data_direction(minute_data)
+            if not spearman_value is None:
+                current_spearman, _  = utils.calculate_data_direction(minute_data)['spearman']
                 bet_is_bear = binance_price <= chainlink_price['price']
-                spearman_is_ok = (
-                    (bet_is_bear and current_spearman <= -1*spearman_min_value) or 
-                    (not bet_is_bear and current_spearman >= spearman_min_value)
-                )
+                spearman_is_ok = check_spearman(
+                    current_spearman, 
+                    bet_is_bear, 
+                    base_price_difference, 
+                    spearman_mode, 
+                    spearman_value, 
+                    spearman_max_difference)
+                if not spearman_is_ok:
+                    print(current_spearman, bet_is_bear)
 
 
             if price_is_ok and spearman_is_ok:
                 just_did_a_bet = just_did_a_bet + 1
 
-                place_bet(
-                    binance_price < chainlink_price['price'],
-                    WALLET,
-                    PRIVATE_KEY,
-                    web3,
-                    contractPancake,
-                    bot_max_bnb,
-                    bot_max_percentage
-                )
-                # print("DISQUE APOSTABA")
-                consecutives_bets=just_did_a_bet
-                decision='place_bet'
+                if not maximum_consecutive_bets is None and just_did_a_bet > maximum_consecutive_bets:
+                    decision='too_many_consecutive_bets'
+                else:
+                    last_bet_bear = binance_price < chainlink_price['price']
+                    last_bet_id = next_round_id
+                    last_bet_difference = base_price_difference
+
+                    place_bet(
+                        binance_price < chainlink_price['price'],
+                        WALLET,
+                        PRIVATE_KEY,
+                        web3,
+                        contractPancake,
+                        bot_max_bnb,
+                        bot_max_percentage
+                    )
+                    #print("DISQUE APOSTABA")
+                    decision='place_bet'
             elif price_is_ok and not spearman_is_ok:
                 decision='spearman_not_ok'
                 just_did_a_bet = 0
             else:
                 decision='price_not_ok'
+                if real_minimum > min_percentage_difference:
+                    decision = 'price_not_ok_penalty_applied_' + str(real_minimum)
+                
+                if last_bet_difference > base_price_difference:
+                    decision = 'price_not_ok_penalty_applied_difference_smaller_than_previous'
                 just_did_a_bet = 0
            
             csv_row = {
@@ -157,7 +240,7 @@ while True:
                 'chainlink_price':chainlink_price['price'],
                 'price_difference':base_price_difference,
                 'position': 'bear' if binance_price < chainlink_price['price'] else 'bull',
-                'consecutives_bets':consecutives_bets,
+                'consecutives_bets':just_did_a_bet,
                 'decision':decision,
                 'date_before_bet': datetime.timestamp(datetime.now()),
                 'should_bet_at': should_bet_at             
