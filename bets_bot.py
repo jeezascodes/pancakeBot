@@ -224,8 +224,6 @@ while True:
                 if real_minimum > min_percentage_difference:
                     decision = 'price_not_ok_penalty_applied_' + str(real_minimum)
                 
-                if min_percentage_difference < real_minimum <= base_price_difference <= last_bet_difference:
-                    decision = 'price_not_ok_penalty_applied_difference_smaller_than_previous'
                 just_did_a_bet = 0
            
             csv_row = {
