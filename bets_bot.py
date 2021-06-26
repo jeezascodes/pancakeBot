@@ -179,9 +179,6 @@ while True:
 
             price_is_ok = base_price_difference >= real_minimum
             
-            if not failed_round_penalty is None and not won_last_bet:
-                price_is_ok = price_is_ok and base_price_difference > last_bet_difference
-
             if not max_percentage_difference is None:
                 price_is_ok = real_minimum <= base_price_difference < max_percentage_difference
 
