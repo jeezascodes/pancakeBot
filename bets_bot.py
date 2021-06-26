@@ -193,9 +193,7 @@ while True:
                     spearman_mode, 
                     spearman_value, 
                     spearman_max_difference)
-                if not spearman_is_ok:
-                    print(current_spearman, bet_is_bear)
-
+                
 
             if price_is_ok and spearman_is_ok:
                 just_did_a_bet = just_did_a_bet + 1
