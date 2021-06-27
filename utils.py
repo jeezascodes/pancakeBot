@@ -564,3 +564,26 @@ def claim_winnings(round_id, wallet, private_key, web3_connection, contract):
         print('despues del claim')
     else:
         print('not claimable')
+
+
+def lost_too_close_num(array,current):
+
+    if len(array) >= 2:
+
+        last = int(array[-1])
+        previous = int(array[-2])
+
+        if last - previous <= 3 and int(current) - last <= 6:
+            return 0.008
+
+        if last - previous <= 3 and 10 > int(current) - last > 7:
+            return 0.003
+
+        if last - previous > 3 and int(current) - last <= 6:
+            return 0.001
+
+        if 6 > last - previous > 3 and 10 > int(current) - last:
+            return 0.0005
+
+    return 0
+
