@@ -11,3 +11,4 @@ spearman_max_difference = 0.003
 spearman_mode = 'conservative'
 failed_round_penalty = 0.001
 maximum_consecutive_bets = 3
+trauma_mode = True

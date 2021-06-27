@@ -29,6 +29,7 @@ from config import (
     bot_max_percentage,
     failed_round_penalty,
     maximum_consecutive_bets,
+    trauma_mode
 )
 
 
@@ -61,6 +62,7 @@ last_bet_bear = False
 last_bet_id = None
 won_last_bet = True
 last_bet_difference = 0
+lost_bets_array = []
 
 load_dotenv()
 WALLET = os.environ.get('WALLET')
@@ -88,7 +90,7 @@ if not max_percentage_difference is None:
 if not spearman_value is None:
     if spearman_mode != 'conservative' and spearman_mode != 'aggressive':
         print("Error: if spearman_value is defined, spearman_mode must be provided as aggressive or conservative")   
-        sys.exit(2) 
+        sys.exit(2)
     
     print("Warning, this bot will bet using a spearman coeffcient of {} in {} mode".format(spearman_value, spearman_mode))
 
@@ -100,6 +102,10 @@ if not maximum_consecutive_bets is None:
 
 if not failed_round_penalty is None:
     print("Warning, this bot will apply an extra {} penalty on minimum percentage difference if the last round was lost".format(failed_round_penalty))  
+
+if trauma_mode:
+    print("Warning, this bot will apply an extra penalty if we have lost two rounds in the last 10 rounds")
+
 
 while True:
 
@@ -141,6 +147,7 @@ while True:
                 won_last_bet = True
             else:
                 won_last_bet = False
+                lost_bets_array.append(last_bet_id)
 
         current_active_round_id = live_round['id']
         next_round_id = int(current_active_round_id) + 1
@@ -160,6 +167,7 @@ while True:
                     won_last_bet = True
                 else:
                     won_last_bet = False
+                    lost_bets_array.append(last_bet_id)
 
             minute_data  = utils.get_binance_minute_data_for_timestamp(should_bet_at)
             
@@ -176,6 +184,12 @@ while True:
             real_minimum = min_percentage_difference
             if not failed_round_penalty is None and not won_last_bet:
                 real_minimum = real_minimum + (failed_round_penalty * just_did_a_bet)
+
+            if trauma_mode:
+                other_minimum = min_percentage_difference + utils.lost_too_close_num(lost_bets_array, next_round_id)
+                real_minimum = max(real_minimum, other_minimum)
+
+            
 
             price_is_ok = base_price_difference >= real_minimum
             

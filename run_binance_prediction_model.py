@@ -42,8 +42,7 @@ def load_data_from_csv(file, min_t, max_t):
     print("loaded {count} rounds inside interval from {file}".format(count=len(result), file=file))
     return result
     
-
-
+        
 
 # Verify Parameters
 parser = OptionParser()
@@ -85,6 +84,15 @@ parser.add_option("--chainlink_age",
                   type="int",
                   help="maximal age (seconds) for a chainlink price to enter in a bet",
                   default=70)
+parser.add_option("--trauma_on",
+                  dest="trauma_on",
+                  action="store_true",
+                  help="trauma")
+parser.add_option("--apply_lost_penalty",
+                  dest="apply_lost_penalty",
+                  type="float",
+                  help="add penalty to min_difference after a bet is lost"
+                  )
 parser.add_option("--spearman_min",
                   dest="spearman_min",
                   type="float",
@@ -166,6 +174,9 @@ day_resume = []
 consecutive_bets = 0
 won_bet = None
 binance_difference = None
+lost_bets = 0
+last_difference = 0
+last_2_defeats = []
 
 
 for p_round in round_data:
@@ -204,7 +215,7 @@ for p_round in round_data:
     if p_round['chainlink_price'] == 'N/A':
         continue
     
-    last_difference = 0 if binance_difference is None else binance_difference
+    #last_difference = 0 if binance_difference is None else binance_difference
     binance_difference = float(p_round['binance_difference'])
     chainlink_price_age = int(p_round['chainlink_price_age'])
     
@@ -216,25 +227,35 @@ for p_round in round_data:
     lost_last_bet = not won_bet is None and not won_bet
     
     difference_is_ok = binance_difference >= options.max_difference_percentage
-    if lost_last_bet:
-        difference_is_ok = binance_difference >= options.max_difference_percentage + 0.001*consecutive_bets and binance_difference > last_difference
+
+
+    if lost_last_bet and not options.apply_lost_penalty is None:
+        multiplier = consecutive_bets
+        difference_is_ok = binance_difference >= options.max_difference_percentage + (options.apply_lost_penalty*multiplier)
+
+    if options.trauma_on:
+        difference_is_ok = difference_is_ok and binance_difference >= options.max_difference_percentage + utils.lost_too_close_num(last_2_defeats,p_round['id'])
+    
+    
     if not options.min_difference_percentage is None :
 
         minimum = options.min_difference_percentage
         maximum = options.max_difference_percentage
         difference_is_ok = minimum <= binance_difference < maximum
     
-    
+    spearman_aggressive = options.spearman_aggressive
+        
 
     spearman_is_ok = True
     if not options.spearman_min is None:
         round_spearman = float(p_round['spearman_coefficient'])
         bet_is_bear = p_round['binance_position'] == 'Bear'
         spearman_is_ok = check_spearman(
-            round_spearman, bet_is_bear,
+            round_spearman,
+            bet_is_bear,
             options.spearman_min,
             binance_difference,
-            options.spearman_aggressive,
+            spearman_aggressive,
             options.spearman_max_difference
         )
 
@@ -248,7 +269,7 @@ for p_round in round_data:
         consecutive_bets += 1
         if not options.avoid_consecutive_from is None and consecutive_bets >= options.avoid_consecutive_from:
             continue
-
+        
         
         if consecutive_bets > 1 and won_bet:
             bet_amount = (portfolio_total - bet_amount) * PORTFOLIO_PERCENTAGE
@@ -268,6 +289,13 @@ for p_round in round_data:
 
         
         won_bet = p_round['binance_position'] == p_round['position']
+        last_difference = binance_difference
+        last_played_id = p_round['id']
+        if not won_bet:
+            lost_bets += 1
+            last_2_defeats.append(last_played_id)
+        else:
+            lost_bets = 0
         bull = float(p_round['bullAmount']) + (bet_amount if p_round['binance_position'] == "Bull" else 0)
         bear = float(p_round['bearAmount']) + (bet_amount if p_round['binance_position'] == "Bear" else 0)
         if p_round['position'] == 'Bull':
@@ -333,12 +361,12 @@ if len(played_rounds) > 0:
         writer.writeheader()
         writer.writerows(played_rounds)
 
-# writing the data into the file
-savings_name = OUTPUT_CSV_FILE.lower().replace('.csv','')
-file = open(savings_name+'_savings.csv', 'w', newline='')
-if len(savings_movements) > 0:
-    fieldnames = list(savings_movements[0].keys())
-    with file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(savings_movements)
+# # writing the data into the file
+# savings_name = OUTPUT_CSV_FILE.lower().replace('.csv','')
+# file = open(savings_name+'_savings.csv', 'w', newline='')
+# if len(savings_movements) > 0:
+#     fieldnames = list(savings_movements[0].keys())
+#     with file:
+#         writer = csv.DictWriter(file, fieldnames=fieldnames)
+#         writer.writeheader()
+#         writer.writerows(savings_movements)
