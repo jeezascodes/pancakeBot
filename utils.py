@@ -568,22 +568,30 @@ def claim_winnings(round_id, wallet, private_key, web3_connection, contract):
 
 def lost_too_close_num(array,current):
 
+    bets_calm_window = 10
+    bets_panic_window = 6
+    panic_distance = 3
+    calm_distance = 6
+
+
     if len(array) >= 2:
 
         last = int(array[-1])
         previous = int(array[-2])
 
-        if last - previous <= 3 and int(current) - last <= 6:
+        if last - previous <= panic_distance and int(current) - last <= bets_panic_window:
             return 0.008
 
-        if last - previous <= 3 and 10 > int(current) - last > 7:
+        elif last - previous <= panic_distance and bets_calm_window > int(current) - last:
             return 0.003
 
-        if last - previous > 3 and int(current) - last <= 6:
+        elif last - previous > panic_distance and int(current) - last <= bets_panic_window:
             return 0.001
 
-        if 6 > last - previous > 3 and 10 > int(current) - last:
+        elif calm_distance > last - previous > panic_distance and bets_calm_window > int(current) - last:
             return 0.0005
 
     return 0
+
+
 
