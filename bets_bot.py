@@ -147,7 +147,8 @@ while True:
                 won_last_bet = True
             else:
                 won_last_bet = False
-                lost_bets_array.append(last_bet_id)
+                if not last_bet_id in lost_bets_array:
+                    lost_bets_array.append(last_bet_id)
 
         current_active_round_id = live_round['id']
         next_round_id = int(current_active_round_id) + 1
@@ -187,6 +188,7 @@ while True:
 
             if trauma_mode:
                 other_minimum = min_percentage_difference + utils.lost_too_close_num(lost_bets_array, next_round_id)
+                print(other_minimum, lost_bets_array[-2:], next_round_id)
                 real_minimum = max(real_minimum, other_minimum)
 
             
