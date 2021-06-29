@@ -237,7 +237,7 @@ while True:
                 just_did_a_bet = 0
             else:
                 decision='price_not_ok'
-                if real_minimum > min_percentage_difference:
+                if real_minimum > min_percentage_difference and base_price_difference > min_percentage_difference:
                     decision = 'price_not_ok_penalty_applied_' + str(real_minimum)
                 
                 just_did_a_bet = 0
