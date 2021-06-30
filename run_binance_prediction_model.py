@@ -229,9 +229,8 @@ for p_round in round_data:
     difference_is_ok = binance_difference >= options.max_difference_percentage
 
 
-    if lost_last_bet and not options.apply_lost_penalty is None:
-        multiplier = consecutive_bets
-        difference_is_ok = binance_difference >= options.max_difference_percentage + (options.apply_lost_penalty*multiplier)
+    if lost_last_bet and not options.apply_lost_penalty is None and consecutive_bets > 0:
+        difference_is_ok = binance_difference >= options.max_difference_percentage + (options.apply_lost_penalty*consecutive_bets) and binance_difference > last_difference
 
     if options.trauma_on:
         difference_is_ok = difference_is_ok and binance_difference >= options.max_difference_percentage + utils.lost_too_close_num(last_2_defeats,p_round['id'])
