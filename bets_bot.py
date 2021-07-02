@@ -184,16 +184,17 @@ while True:
 
             real_minimum = min_percentage_difference
             if not failed_round_penalty is None and not won_last_bet and just_did_a_bet > 0:
-                real_minimum = real_minimum + (failed_round_penalty * just_did_a_bet) and base_price_difference > last_bet_difference
+                real_minimum = max(real_minimum + (failed_round_penalty * just_did_a_bet),last_bet_difference)
+
 
             if trauma_mode:
                 other_minimum = min_percentage_difference + utils.lost_too_close_num(lost_bets_array, next_round_id)
                 print(other_minimum, lost_bets_array[-2:], next_round_id)
                 real_minimum = max(real_minimum, other_minimum)
 
-            
-
             price_is_ok = base_price_difference >= real_minimum
+
+
             
             if not max_percentage_difference is None:
                 price_is_ok = real_minimum <= base_price_difference < max_percentage_difference
