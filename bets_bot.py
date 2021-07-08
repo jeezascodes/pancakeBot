@@ -29,7 +29,8 @@ from config import (
     bot_max_percentage,
     failed_round_penalty,
     maximum_consecutive_bets,
-    trauma_mode
+    trauma_mode,
+    effectivity_mode,
 )
 
 
@@ -63,6 +64,7 @@ last_bet_id = None
 won_last_bet = True
 last_bet_difference = 0
 lost_bets_array = []
+played_bets_array = []
 
 load_dotenv()
 WALLET = os.environ.get('WALLET')
@@ -106,6 +108,13 @@ if not failed_round_penalty is None:
 if trauma_mode:
     print("Warning, this bot will apply an extra penalty if we have lost two rounds in the last 10 rounds")
 
+if effectivity_mode:
+    print("Warning, this bot will apply some penalty on minimum percentage if on the last 10 rounds, effectivity is under 70%")
+    print("Current penalty: {}".format(utils.calculate_effectivity(played_bets_array)))
+
+if effectivity_mode or trauma_mode:
+    played_bets_array = utils.get_last_bets_from_wallet([WALLET], 12)
+    lost_bets_array = [int(r['round_id']) for r in list(filter(lambda z: not z['won'], played_bets_array))]
 
 while True:
 
@@ -149,6 +158,9 @@ while True:
                 won_last_bet = False
                 if not last_bet_id in lost_bets_array:
                     lost_bets_array.append(last_bet_id)
+            
+            if effectivity_mode:
+                utils.append_remove_first(played_bets_array,{'round_id': last_bet_id, 'won': won_last_bet})
 
         current_active_round_id = live_round['id']
         next_round_id = int(current_active_round_id) + 1
@@ -169,6 +181,10 @@ while True:
                 else:
                     won_last_bet = False
                     lost_bets_array.append(last_bet_id)
+                
+                if effectivity_mode:
+                    utils.append_remove_first(played_bets_array,{'round_id': last_bet_id, 'won': won_last_bet})
+
 
             minute_data  = utils.get_binance_minute_data_for_timestamp(should_bet_at)
             
@@ -184,13 +200,18 @@ while True:
 
             real_minimum = min_percentage_difference
             if not failed_round_penalty is None and not won_last_bet and just_did_a_bet > 0:
-                real_minimum = max(real_minimum + (failed_round_penalty * just_did_a_bet),last_bet_difference)
-
+                real_minimum = max(min_percentage_difference + (failed_round_penalty * just_did_a_bet),last_bet_difference)
 
             if trauma_mode:
                 other_minimum = min_percentage_difference + utils.lost_too_close_num(lost_bets_array, next_round_id)
-                print(other_minimum, lost_bets_array[-2:], next_round_id)
                 real_minimum = max(real_minimum, other_minimum)
+                print(lost_bets_array[-2:], next_round_id)
+
+            if effectivity_mode:
+                penalty = utils.calculate_effectivity(played_bets_array)
+                real_minimum = max(real_minimum, min_percentage_difference + penalty)
+                print("Penalty: ",penalty)
+                print("Array: ",played_bets_array)
 
             price_is_ok = base_price_difference >= real_minimum
 

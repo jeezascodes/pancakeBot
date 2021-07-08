@@ -44,6 +44,7 @@ def load_data_from_csv(file, min_t, max_t):
     
         
 
+
 # Verify Parameters
 parser = OptionParser()
 utils.add_date_options_to_parser(parser)
@@ -105,6 +106,11 @@ parser.add_option("--spearman_aggressive",
                   dest="spearman_aggressive",
                   action="store_true",
                   help="use conservative version of spearman")
+parser.add_option("--effectivity_on",
+                  dest="effectivity_on",
+                  action="store_true",
+                  help="use conservative version of spearman")
+
 parser.add_option("--follow_public",
                   dest="follow_public",
                   action="store_true",
@@ -177,6 +183,7 @@ binance_difference = None
 lost_bets = 0
 last_difference = 0
 last_2_defeats = []
+last_played = []
 
 
 for p_round in round_data:
@@ -235,6 +242,8 @@ for p_round in round_data:
     if options.trauma_on:
         difference_is_ok = difference_is_ok and binance_difference >= options.max_difference_percentage + utils.lost_too_close_num(last_2_defeats,p_round['id'])
     
+    if options.effectivity_on:
+        difference_is_ok = binance_difference >= options.max_difference_percentage + utils.calculate_effectivity(last_played)
     
     if not options.min_difference_percentage is None :
 
@@ -288,6 +297,7 @@ for p_round in round_data:
 
         
         won_bet = p_round['binance_position'] == p_round['position']
+        last_played.append({'won': won_bet})
         last_difference = binance_difference
         last_played_id = p_round['id']
         if not won_bet:

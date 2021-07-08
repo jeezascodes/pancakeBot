@@ -13,6 +13,77 @@ import sys
 import statistics
 import scipy.stats
 
+def append_remove_first(played_list, element):
+
+    # element is a dict with
+    # {
+    #    round_id: xxxx,
+    #    won: True      
+    # }
+
+    search = list(filter(lambda round: int(round['round_id']) == int(element['round_id']), played_list))
+    if len(search) > 0:
+        print("Warning, tried to append already existent result to list",element)
+        return None
+    
+    if len(played_list) < 15:
+        played_list.append(element)
+    else:
+        played_list.pop(0)
+        played_list.append(element)
+
+
+
+
+
+def get_last_bets_from_wallet(wallets, quantity):
+
+    result = []
+    query = """
+       query{{
+        users(where: {{address_in: {wallets} }}){{
+            id
+            address
+            bets (first: {quantity}, orderBy: createdAt, orderDirection: desc) {{
+                position
+                createdAt
+                claimed
+                amount
+                claimedAmount
+                round {{
+                    position
+                    closePrice
+                    id
+                }}
+            }}
+        }}
+    }}
+    """
+
+    
+    real_query = query.format(
+        quantity=quantity,
+        wallets=str(wallets).replace("'",'"')
+    )
+    response = run_query(real_query)
+
+        
+    users = response['data']['users']
+    for user in users:
+        bets = user['bets']
+        for bet in bets:
+            if bet['round']['closePrice']:
+                result.append({
+                    'round_id' : bet['round']['id'],
+                    'won' : bet['round']['position'] == bet['position']
+                })
+        
+            
+    result.sort(key=lambda x: int(x['round_id']))
+    return result
+
+
+
 
 def get_binance_last_price():
     url = 'https://api.binance.com/api/v3/ticker/price'
@@ -593,5 +664,41 @@ def lost_too_close_num(array,current):
 
     return 0
 
+def calculate_effectivity(played_array):
 
+    min = 5
+    size =  10
+    if len(played_array) <= min:
+        return 0
+    
+    
+    won = list(filter(lambda x: x['won'], played_array[-size:]))
+
+    
+    effectivity = len(won)/len(played_array[-size:])
+    
+    #7 35 1
+    
+    # if effectivity < 0.6:
+    #     return 0.003
+    # elif effectivity < 0.65:
+    #     return 0.0027
+    # elif effectivity < 0.70:
+    #     return 0.0010
+    # elif effectivity < 0.75:
+    #     return 0.0007
+    # elif effectivity < 0.80:
+    #     return 0.0005
+    
+
+    if effectivity < 0.5:
+        return 0.007
+    elif effectivity < 0.6:
+        return 0.0035
+    elif effectivity < 0.7:
+        return 0.001
+    
+    
+    return 0
+    
 
