@@ -30,7 +30,7 @@ from config import (
     failed_round_penalty,
     maximum_consecutive_bets,
     trauma_mode,
-    effectivity_mode,
+    effectivity_mode
 )
 
 
@@ -68,6 +68,7 @@ played_bets_array = []
 
 load_dotenv()
 WALLET = os.environ.get('WALLET')
+PREV_WALLET = os.environ.get('PREVIOUS_WALLET')
 PRIVATE_KEY = os.environ.get('PRIVATE_KEY')
 
 if WALLET is None or PRIVATE_KEY is None:
@@ -113,7 +114,7 @@ if effectivity_mode:
     print("Current penalty: {}".format(utils.calculate_effectivity(played_bets_array)))
 
 if effectivity_mode or trauma_mode:
-    played_bets_array = utils.get_last_bets_from_wallet([WALLET], 20)
+    played_bets_array = utils.get_last_bets_from_wallet([PREV_WALLET,WALLET], 20)
     lost_bets_array = [int(r['round_id']) for r in list(filter(lambda z: not z['won'], played_bets_array))]
 
 while True:
