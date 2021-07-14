@@ -88,7 +88,7 @@ def get_last_bets_from_wallet(wallets, quantity):
 def get_binance_last_price():
     url = 'https://api.binance.com/api/v3/ticker/price'
     try:
-        response = requests.get(url, params={'symbol': 'BNBUSDT'})
+        response = requests.get(url, params={'symbol': 'BNBUSDT'}, timeout=5)
         data = response.json()
         return float(data['price'])
     except Exception as e:
@@ -145,7 +145,7 @@ def get_binance_price_for_timestamp(timestamp):
      }
      
      try: 
-        response = requests.get(url,params=query_string)
+        response = requests.get(url,params=query_string, timeout=5)
         data = response.json()
         if len(data) > 0:
             return float(data[0]['p'])
@@ -212,7 +212,7 @@ def get_binance_minute_data_for_timestamp(timestamp):
         need_extra_request = True
         while need_extra_request:
 
-            response = requests.get(url,params=query_string)
+            response = requests.get(url,params=query_string,  timeout=5)
             data = response.json()
             data.reverse()
             result += [{'price': el['p'], 'timestamp': el['T']} for el in data]
@@ -264,7 +264,7 @@ def get_chainlink_last_round_price():
 
 def run_query(query):
     request = requests.post(
-        'https://api.thegraph.com/subgraphs/name/pancakeswap/prediction', json={'query': query})
+        'https://api.thegraph.com/subgraphs/name/pancakeswap/prediction', json={'query': query}, timeout=5)
     if request.status_code == 200:
         return request.json()
     else:
