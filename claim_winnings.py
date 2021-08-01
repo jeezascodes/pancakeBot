@@ -5,6 +5,7 @@ from utils import get_claimable_rounds, claim_winnings
 import time
 from web3 import Web3
 from constants import network_provider, pancake_address, abi_pancake
+from web3.middleware import geth_poa_middleware
 
 # Verify ENV
 
@@ -18,6 +19,7 @@ if WALLET is None or PRIVATE_KEY is None:
 
 
 web3 = Web3(Web3.HTTPProvider(network_provider))
+web3.middleware_onion.inject(geth_poa_middleware, layer=0)
 contractPancake = web3.eth.contract(address=pancake_address, abi=abi_pancake)
 
 

@@ -16,6 +16,8 @@ from constants import (
     network_provider
 
 )
+from web3.middleware import geth_poa_middleware
+
 from config import (
     seconds_before_lock,
     round_duration,
@@ -51,8 +53,12 @@ def check_spearman(spearman_coefficient, bet_is_bear, price_difference, spearman
         )
 
 
+web3 = Web3(Web3.HTTPProvider(network_provider))
+web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+contractPancake = web3.eth.contract(address=pancake_address, abi=abi_pancake)
+
 current_active_round_id = None
-result = utils.get_pancake_last_rounds(3, 0)
+result = utils.get_pancake_last_rounds_v2(web3, contractPancake)
 live_round = result[1]
 starts_at = int(live_round['lockAt'])
 should_close_at = starts_at + round_duration
@@ -75,8 +81,6 @@ if WALLET is None or PRIVATE_KEY is None:
     print("This script cannot run without a defined .env file that contains 'WALLET' and 'PRIVATE_KEY' entries")
     sys.exit(2)
 
-web3 = Web3(Web3.HTTPProvider(network_provider))
-contractPancake = web3.eth.contract(address=pancake_address, abi=abi_pancake)
 
 if min_percentage_difference is None:
     print("Error: This bot needs at least the 'min_percentage_difference' variable in config to work")
@@ -122,7 +126,7 @@ while True:
     now = round(datetime.timestamp(datetime.now()), 0)
 
     if now >= should_close_at:
-        result = utils.get_pancake_last_rounds(3, 0)
+        result = utils.get_pancake_last_rounds_v2(web3, contractPancake)
         
         if len(result) == 0:
             print("At {} we didn't find rounds information".format(datetime.fromtimestamp(now)))

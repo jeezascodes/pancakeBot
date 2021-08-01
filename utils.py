@@ -307,7 +307,38 @@ def get_pancake_last_rounds(first, skip):
         print(e)
         return []
 
+
+def get_round_from_contract(round_id, web3_connection, contract):
+
+    round = contract.functions.rounds(round_id).call()
     
+    lock_block_number = int(round[2])
+    lock_timestamp = web3_connection.eth.get_block(lock_block_number).timestamp
+    
+    return {
+        'id': round[0],
+        'epoch': round[0],
+        'lockAt': lock_timestamp,
+        'lockPrice': round[4],
+        'closePrice': round[5],
+        'totalAmount': round[6]
+    }
+
+def get_pancake_last_rounds_v2(web3_connection, contract):
+
+    next_round_ID = int(contract.functions.currentEpoch().call())
+    live_round_ID = next_round_ID - 1
+    closed_round_ID = live_round_ID - 1
+
+    
+    
+
+    live_round = get_round_from_contract(live_round_ID,web3_connection, contract)
+    closed_round = get_round_from_contract(closed_round_ID,web3_connection, contract)
+
+    return [{}, live_round, closed_round]
+
+
 
 # Este query dejara de funcionar si el mercado c
 def get_round_bets_at_timestamp(round_number, timestamp):
@@ -443,7 +474,8 @@ def get_claimable_rounds(wallet):
         else:
             bets = result['data']['users'][0]['bets']
             filterd_bets = list(
-                filter(lambda x: x['position'] == x['round']['position'], bets))
+                filter(lambda x: x['position'] == x['round']['position'] or x['round']['position'] is None, bets))
+            print(filterd_bets)  
             return filterd_bets
     except Exception as e:
         print(e)
