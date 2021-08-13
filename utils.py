@@ -330,13 +330,95 @@ def get_pancake_last_rounds_v2(web3_connection, contract):
     live_round_ID = next_round_ID - 1
     closed_round_ID = live_round_ID - 1
 
-    
-    
-
     live_round = get_round_from_contract(live_round_ID,web3_connection, contract)
     closed_round = get_round_from_contract(closed_round_ID,web3_connection, contract)
 
     return [{}, live_round, closed_round]
+
+
+def get_bet_info_from_contract(round_id, wallet, web3_connection, contract):
+
+    [position, amount, claimed] = contract.functions.ledger(round_id,wallet).call()
+
+    result = {
+        "id" : round_id,
+        "played": amount > 0,
+    }
+
+    if result['played']:
+        result['position'] = "Bear" if position else "Bull"   
+        result['claimed'] = claimed 
+
+
+    return result
+
+
+def get_last_bets_from_contract(wallets, web3_connection, contract, quantity):
+
+    result = []
+    
+
+    for wallet in wallets:
+        [rounds, length] = contract.functions.getUserRounds(wallet,0,1000).call()
+        for c_round in rounds:
+
+            round_info = get_bet_result_from_contract(c_round, wallet, web3_connection, contract)
+            result.append({
+                'round_id' : c_round,
+                'won' : round_info['won']
+            })
+        
+    
+    ordered_result = sorted(result, key = lambda k: int(k['round_id']))
+    return ordered_result
+
+def get_last_bets_from_contract_full(wallets, web3_connection, contract, quantity):
+
+    result = []
+    
+
+    for wallet in wallets:
+        [rounds, length] = contract.functions.getUserRounds(wallet,0,1000).call()
+        for c_round in rounds:
+
+            round_info = get_bet_result_from_contract(c_round, wallet, web3_connection, contract)
+            result.append(round_info)
+        
+    
+    ordered_result = sorted(result, key = lambda k: int(k['id']))
+    return ordered_result
+
+
+def get_bet_result_from_contract(round_id,wallet,web3_connection,contract):
+
+    round_info = get_round_from_contract(round_id, web3_connection, contract)
+    bet_info = get_bet_info_from_contract(round_id, wallet, web3_connection, contract)
+
+    round_is_closed = round_info['closePrice'] != 0
+    round_was_played = bet_info['played']
+
+    result = {
+        'id': round_id,
+        'closed': round_is_closed,
+        'played': round_was_played
+    }
+    
+    if round_was_played:
+        result['position'] = bet_info['position']
+        result['claimed'] = bet_info['claimed']
+
+    if round_was_played and round_is_closed:
+        if round_info['closePrice'] < round_info['lockPrice']:
+            round_position = "Bear"
+        elif round_info['closePrice'] > round_info['lockPrice']:
+            round_position = "Bull"
+        else:
+            round_position = "House"
+        
+        result['won'] = round_position == bet_info['position'] 
+
+    return result
+
 
 
 
@@ -480,6 +562,23 @@ def get_claimable_rounds(wallet):
     except Exception as e:
         print(e)
         return []
+
+def get_claimable_rounds_v2(wallet, web3_connection, contract):
+
+    try:
+        result = get_last_bets_from_contract_full([wallet], web3_connection, contract, 1000)
+        if len(result) < 1:
+            return []
+        else:
+            filterd_bets = list(
+                filter(lambda x: x['closed'] and x['won'] and not x['claimed'], result))
+            print(filterd_bets)  
+            return filterd_bets
+    except Exception as e:
+        print(e)
+        return []
+
+
 
 def get_if_user_has_open_bet(wallet):
     query = """query{{
@@ -732,5 +831,23 @@ def calculate_effectivity(played_array):
     
     
     return 0
-    
+
+
+# from constants import (
+#     pancake_address,
+#     abi_pancake,
+#     network_provider
+
+# )
+# from web3.middleware import geth_poa_middleware
+
+# web3 = Web3(Web3.HTTPProvider(network_provider))
+# web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+# contractPancake = web3.eth.contract(address=pancake_address, abi=abi_pancake)
+
+# #x = get_bet_result_from_contract(19239, "0xe4F27d5C68760955d3CD9dd2Ca7514c3d562E57D", web3, contractPancake)
+# #print(x)
+
+# x = get_claimable_rounds_v2('0xe4F27d5C68760955d3CD9dd2Ca7514c3d562E57D', web3, contractPancake)
+# print(x)
 

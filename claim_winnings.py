@@ -1,7 +1,7 @@
 import sys
 import os
 from dotenv import load_dotenv
-from utils import get_claimable_rounds, claim_winnings
+from utils import get_claimable_rounds_v2, claim_winnings
 import time
 from web3 import Web3
 from constants import network_provider, pancake_address, abi_pancake
@@ -24,7 +24,7 @@ contractPancake = web3.eth.contract(address=pancake_address, abi=abi_pancake)
 
 
 while True:
-    claimable_rounds = get_claimable_rounds(WALLET)
+    claimable_rounds = get_claimable_rounds_v2(WALLET,web3,contractPancake)
     print(claimable_rounds)
     if len(claimable_rounds) > 1:
         for c_round in claimable_rounds:
