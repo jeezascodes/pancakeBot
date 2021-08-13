@@ -28,10 +28,10 @@ while True:
     print(claimable_rounds)
     if len(claimable_rounds) > 1:
         for c_round in claimable_rounds:
-            claim_winnings(int(c_round['round']['id']),WALLET,PRIVATE_KEY,web3,contractPancake)
+            claim_winnings(int(c_round['id']),WALLET,PRIVATE_KEY,web3,contractPancake)
             time.sleep(20)
     elif len(claimable_rounds) == 1:
         c_round=claimable_rounds[0]
-        claim_winnings(int(c_round['round']['id']),WALLET,PRIVATE_KEY,web3,contractPancake)
+        claim_winnings(int(c_round['id']),WALLET,PRIVATE_KEY,web3,contractPancake)
        
     time.sleep(30)
