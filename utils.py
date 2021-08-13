@@ -365,9 +365,9 @@ def get_last_bets_from_contract(wallets, web3_connection, contract, quantity):
             round_info = get_bet_result_from_contract(c_round, wallet, web3_connection, contract)
             result.append({
                 'round_id' : c_round,
-                'won' : round_info['won']
+                'won': round_info['won'] if round_info['closed'] else False
             })
-        
+            
     
     ordered_result = sorted(result, key = lambda k: int(k['round_id']))
     return ordered_result
