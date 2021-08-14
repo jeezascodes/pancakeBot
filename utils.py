@@ -360,8 +360,10 @@ def get_last_bets_from_contract(wallets, web3_connection, contract, quantity):
 
     for wallet in wallets:
         [rounds, length] = contract.functions.getUserRounds(wallet,0,1000).call()
-        for c_round in rounds:
+        filtered_rounds = rounds[-quantity:]
+        for c_round in filtered_rounds:
 
+            
             round_info = get_bet_result_from_contract(c_round, wallet, web3_connection, contract)
             result.append({
                 'round_id' : c_round,
@@ -370,7 +372,7 @@ def get_last_bets_from_contract(wallets, web3_connection, contract, quantity):
             
     
     ordered_result = sorted(result, key = lambda k: int(k['round_id']))
-    return ordered_result
+    return ordered_result[-quantity:]
 
 def get_last_bets_from_contract_full(wallets, web3_connection, contract, quantity):
 
@@ -807,7 +809,6 @@ def calculate_effectivity(played_array):
 
     
     effectivity = len(won)/len(played_array[-size:])
-    
     #7 35 1
     
     # if effectivity < 0.6:
