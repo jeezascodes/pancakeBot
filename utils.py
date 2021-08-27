@@ -756,7 +756,7 @@ def claim_winnings(round_id, wallet, private_key, web3_connection, contract):
         print(' claiming')
         nonce = web3_connection.eth.getTransactionCount(wallet)
         print('nonce:',nonce)
-        transaction = contract.functions.claim(round_id).buildTransaction({
+        transaction = contract.functions.claim([round_id]).buildTransaction({
             'gas': 160000,
             'chainId': 56,
             'from': wallet,
