@@ -331,10 +331,11 @@ def get_pancake_last_rounds_v2(web3_connection, contract):
     live_round_ID = next_round_ID - 1
     closed_round_ID = live_round_ID - 1
 
+    next_round = get_round_from_contract(next_round_ID,web3_connection, contract)
     live_round = get_round_from_contract(live_round_ID,web3_connection, contract)
     closed_round = get_round_from_contract(closed_round_ID,web3_connection, contract)
 
-    return [{}, live_round, closed_round]
+    return [next_round, live_round, closed_round]
 
 
 def get_bet_info_from_contract(round_id, wallet, web3_connection, contract):
@@ -728,20 +729,21 @@ def calculate_bet(wallet, web3_connection, max_bnb, max_percentage):
         return int(balance * max_percentage)
 
 
-def place_bet(is_bear,wallet,private_key,web3_connection, contract, max_bnb, max_percentage):
+def place_bet(is_bear,wallet,private_key,web3_connection, contract, max_bnb, max_percentage,round_id):
     nonce = web3_connection.eth.getTransactionCount(wallet)
     print('placing bet ', ['bear' if is_bear else 'bull'])
+    amount = calculate_bet(wallet,web3_connection,max_bnb,max_percentage)
     bet_config = {
         'gas': 160000,
         'chainId': 56,
         'from': wallet,
         'nonce': nonce,
-        'value': calculate_bet(wallet,web3_connection,max_bnb,max_percentage)
+        'value': amount
     }
     if not is_bear:
-        transaction = contract.functions.betBull().buildTransaction(bet_config)
+        transaction = contract.functions.betBull(round_id).buildTransaction(bet_config)
     else:
-        transaction = contract.functions.betBear().buildTransaction(bet_config)
+        transaction = contract.functions.betBear(round_id).buildTransaction(bet_config)
 
     signed_txn = web3_connection.eth.account.signTransaction(
         transaction, private_key=private_key)
@@ -839,8 +841,15 @@ def calculate_effectivity(played_array):
 #     pancake_address,
 #     abi_pancake,
 #     network_provider
+ 
+# )
+
+# from config import (
+#     bot_max_bnb,
+#     bot_max_percentage
 
 # )
+
 # from web3.middleware import geth_poa_middleware
 
 # web3 = Web3(Web3.HTTPProvider(network_provider))
@@ -850,6 +859,7 @@ def calculate_effectivity(played_array):
 # #x = get_bet_result_from_contract(19239, "0xe4F27d5C68760955d3CD9dd2Ca7514c3d562E57D", web3, contractPancake)
 # #print(x)
 
-# x = get_claimable_rounds_v2('0xe4F27d5C68760955d3CD9dd2Ca7514c3d562E57D', web3, contractPancake)
+# # Bear = True
+# x = place_bet(True, 'wallet', 'private_key', web3, contractPancake, bot_max_bnb, bot_max_percentage, 354)
 # print(x)
 

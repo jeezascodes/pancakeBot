@@ -178,6 +178,7 @@ while True:
 
         if chainlink_price['age'] <= chainlink_price_max_age:
             
+            
             # Checking if the last bet was won or lost
             if just_did_a_bet > 0:
                 if last_bet_bear and chainlink_price['price'] < float(live_round['lockPrice']):
@@ -256,7 +257,8 @@ while True:
                         web3,
                         contractPancake,
                         bot_max_bnb,
-                        bot_max_percentage
+                        bot_max_percentage,
+                        int(result[0]['id'])
                     )
                     #print("DISQUE APOSTABA")
                     decision='place_bet'
