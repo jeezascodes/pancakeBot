@@ -264,7 +264,7 @@ def get_chainlink_last_round_price():
 
 def run_query(query):
     request = requests.post(
-        'https://api.thegraph.com/subgraphs/name/pancakeswap/prediction', json={'query': query}, timeout=5)
+        'https://api.thegraph.com/subgraphs/name/pancakeswap/prediction-v2', json={'query': query}, timeout=5)
     if request.status_code == 200:
         return request.json()
     else:
@@ -287,7 +287,7 @@ def get_pancake_last_rounds(first, skip):
                 startAt
                 lockAt
                 lockPrice
-                endAt
+                closeAt
                 closePrice
                 totalBets
                 totalAmount
@@ -312,16 +312,17 @@ def get_round_from_contract(round_id, web3_connection, contract):
 
     round = contract.functions.rounds(round_id).call()
     
-    lock_block_number = int(round[2])
-    lock_timestamp = web3_connection.eth.get_block(lock_block_number).timestamp
-    
+    #lock_block_number = int(round[2])
+    #lock_timestamp = web3_connection.eth.get_block(lock_block_number).timestamp
+    #print(lock_block_number)
+
     return {
         'id': round[0],
         'epoch': round[0],
-        'lockAt': lock_timestamp,
+        'lockAt': round[2],
         'lockPrice': round[4],
         'closePrice': round[5],
-        'totalAmount': round[6]
+        'totalAmount': round[8]
     }
 
 def get_pancake_last_rounds_v2(web3_connection, contract):
@@ -359,7 +360,7 @@ def get_last_bets_from_contract(wallets, web3_connection, contract, quantity):
     
 
     for wallet in wallets:
-        [rounds, length] = contract.functions.getUserRounds(wallet,0,1000).call()
+        [rounds, _,length] = contract.functions.getUserRounds(wallet,0,1000).call()
         filtered_rounds = rounds[-quantity:]
         for c_round in filtered_rounds:
 
@@ -380,7 +381,7 @@ def get_last_bets_from_contract_full(wallets, web3_connection, contract, quantit
     
 
     for wallet in wallets:
-        [rounds, length] = contract.functions.getUserRounds(wallet,0,1000).call()
+        [rounds, _, length] = contract.functions.getUserRounds(wallet,0,1000).call()
         for c_round in rounds:
 
             round_info = get_bet_result_from_contract(c_round, wallet, web3_connection, contract)
@@ -487,7 +488,7 @@ def get_rounds_from_pancake_using_range(min_t, max_t, step=1000):
 
     ROUND_FIELDS = [
         'id', 'position', 'startAt', 'startBlock', 'startHash', 'lockAt', 'lockBlock',
-        'lockHash', 'lockPrice', 'endAt', 'endBlock', 'endHash', 'closePrice',
+        'lockHash', 'lockPrice', 'closeAt', 'endBlock', 'endHash', 'closePrice',
         'totalBets', 'totalAmount', 'bullBets', 'bullAmount', 'bearBets', 'bearAmount'
     ]
 
