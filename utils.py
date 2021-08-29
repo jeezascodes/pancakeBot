@@ -856,10 +856,15 @@ def calculate_effectivity(played_array):
 # web3.middleware_onion.inject(geth_poa_middleware, layer=0)
 # contractPancake = web3.eth.contract(address=pancake_address, abi=abi_pancake)
 
+# # played_bets_array = get_last_bets_from_contract(['0x0Dfd5dC37bD6c207dBFA13fb9aCA2cD08126B42C','0xe4F27d5C68760955d3CD9dd2Ca7514c3d562E57D'], web3, contractPancake, 20)
+# # print(played_bets_array)
+
+# x = get_pancake_last_rounds_v2(web3, contractPancake)
+# print(x)
 # #x = get_bet_result_from_contract(19239, "0xe4F27d5C68760955d3CD9dd2Ca7514c3d562E57D", web3, contractPancake)
 # #print(x)
 
 # # Bear = True
-# x = place_bet(True, 'wallet', 'private_key', web3, contractPancake, bot_max_bnb, bot_max_percentage, 354)
-# print(x)
+# # x = place_bet(True, 'wallet', 'private_key', web3, contractPancake, bot_max_bnb, bot_max_percentage, 354)
+# # print(x)
 

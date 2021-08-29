@@ -154,8 +154,8 @@ while True:
         # If i didnt validate the last bet when the round was live, because the chainlink price
         # was too old, i validate if we won here
         if int(last_closed_round['id']) == last_bet_id:
-            last_lock_price = float(last_closed_round['lockPrice'])
-            last_close_price = float(last_closed_round['closePrice'])
+            last_lock_price = float(last_closed_round['lockPrice']/10**8)
+            last_close_price = float(last_closed_round['closePrice']/10**8)
             if last_bet_bear and last_lock_price > last_close_price:
                 won_last_bet = True
             elif not last_bet_bear and last_lock_price < last_close_price:
@@ -181,9 +181,9 @@ while True:
             
             # Checking if the last bet was won or lost
             if just_did_a_bet > 0:
-                if last_bet_bear and chainlink_price['price'] < float(live_round['lockPrice']):
+                if last_bet_bear and chainlink_price['price'] < float(live_round['lockPrice']/10**8):
                     won_last_bet = True
-                elif not last_bet_bear and chainlink_price['price'] > float(live_round['lockPrice']):
+                elif not last_bet_bear and chainlink_price['price'] > float(live_round['lockPrice']/10**8):
                     won_last_bet = True
                 else:
                     won_last_bet = False
