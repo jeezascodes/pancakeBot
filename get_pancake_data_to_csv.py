@@ -8,9 +8,6 @@ import pytz
 from optparse import OptionParser
 
 
-    
-
-
 
 parser = OptionParser()
 utils.add_date_options_to_parser(parser)

@@ -488,8 +488,7 @@ def get_round_bets_at_timestamp(round_number, timestamp):
 def get_rounds_from_pancake_using_range(min_t, max_t, step=1000):
 
     ROUND_FIELDS = [
-        'id', 'position', 'startAt', 'startBlock', 'startHash', 'lockAt', 'lockBlock',
-        'lockHash', 'lockPrice', 'closeAt', 'endBlock', 'endHash', 'closePrice',
+        'id', 'position', 'startAt', 'startHash', 'lockAt', 'lockPrice', 'closeAt', 'closePrice',
         'totalBets', 'totalAmount', 'bullBets', 'bullAmount', 'bearBets', 'bearAmount'
     ]
 
@@ -523,6 +522,7 @@ def get_rounds_from_pancake_using_range(min_t, max_t, step=1000):
             fields_list="\n".join(ROUND_FIELDS)
             )
         )
+
 
         result += response['data']['rounds']
         

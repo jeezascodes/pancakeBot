@@ -92,7 +92,7 @@ BINANCE_API_URL = 'https://api.binance.com'
 CURRENCY_SYMBOL = 'BNBUSDT'
 TIME_WINDOW = options.time_before_lock
 FIELDS = ['id','position','startAt','startBlock','startHash','lockAt',
-         'lockBlock','lockHash','lockPrice','endAt','endBlock','endHash',
+         'lockBlock','lockHash','lockPrice','closeAt','endBlock','endHash',
          'closePrice','totalBets','totalAmount','bullBets','bullAmount',
          'bearBets','bearAmount','before_lock_window','chainlink_price_age',
          'chainlink_price','binance_price','binance_difference','binance_position']

@@ -7,7 +7,7 @@ from constants import chainlink_address, abi_chainlink
 import utils
 
 
-def get_chainlink_data_using_interval(min_t, max_t, seed=None, average=90):
+def get_chainlink_data_using_interval(min_t, max_t, seed=None, average=18):
     web3 = Web3(Web3.HTTPProvider('https://bsc-dataseed1.ninicoin.io/'))
     abi = abi_chainlink
     addr = chainlink_address
